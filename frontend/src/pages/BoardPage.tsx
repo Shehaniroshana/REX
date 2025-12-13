@@ -6,7 +6,7 @@ import { useProjectStore } from '@/store/projectStore'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
-import { 
+import {
   Plus, ArrowLeft, Filter, Settings,
   CheckCircle2, Circle, AlertCircle, Bug, BookOpen, Layers
 } from 'lucide-react'
@@ -60,10 +60,10 @@ export default function BoardPage() {
   const boardIssues = (issues[projectId || ''] || []) as Issue[]
 
   const columns = {
-    todo: boardIssues.filter(i => i.status === 'todo'),
-    in_progress: boardIssues.filter(i => i.status === 'in_progress'),
-    in_review: boardIssues.filter(i => i.status === 'in_review'),
-    done: boardIssues.filter(i => i.status === 'done'),
+    todo: boardIssues.filter(i => i.status === 'todo' && i.type !== 'subtask'),
+    in_progress: boardIssues.filter(i => i.status === 'in_progress' && i.type !== 'subtask'),
+    in_review: boardIssues.filter(i => i.status === 'in_review' && i.type !== 'subtask'),
+    done: boardIssues.filter(i => i.status === 'done' && i.type !== 'subtask'),
   }
 
   const handleDragEnd = async (result: DropResult) => {
@@ -76,7 +76,7 @@ export default function BoardPage() {
     if (!issue) return
 
     const newStatus = destination.droppableId as any
-    
+
     try {
       await updateIssue(issue.id, { ...issue, status: newStatus })
       toast({

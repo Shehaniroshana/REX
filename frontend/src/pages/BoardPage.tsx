@@ -1,15 +1,26 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '@/store/authStore'
 import { useIssueStore } from '@/store/issueStore'
 import { useProjectStore } from '@/store/projectStore'
 import { useSprintStore } from '@/store/sprintStore'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import {
-  Plus, ArrowLeft, Filter, Settings,
-  CheckCircle2, Circle, AlertCircle, Bug, BookOpen, Layers,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import type { CreateIssueInput } from '@/types'
+import {
+  Plus, ArrowLeft, Filter,
+  CheckCircle2, AlertCircle, Bug, BookOpen, Layers,
   Rocket
 } from 'lucide-react'
 import { getInitials, cn } from '@/lib/utils'
@@ -43,13 +54,24 @@ const PRIORITY_COLORS: Record<string, string> = {
 export default function BoardPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { issues, fetchIssues, updateIssue } = useIssueStore()
+  const { issues, fetchIssues, updateIssue, createIssue } = useIssueStore()
   const { currentProject, fetchProject } = useProjectStore()
   const { sprints, fetchSprints } = useSprintStore()
   const { toast } = useToast()
 
+  const { user } = useAuthStore() // Import useAuthStore first
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [userFilter, setUserFilter] = useState<'all' | 'mine'>('all')
+  const [showCreateIssueModal, setShowCreateIssueModal] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [formData, setFormData] = useState<Partial<CreateIssueInput>>({
+    title: '',
+    description: '',
+    type: 'task',
+    priority: 'medium',
+  })
 
   useEffect(() => {
     if (projectId) {
@@ -62,11 +84,75 @@ export default function BoardPage() {
   }, [projectId, fetchProject, fetchIssues, fetchSprints])
 
   const activeSprint = sprints.find(s => s.status === 'active')
+
+  const handleCreateIssue = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    if (!projectId || !currentProject) {
+      setError('Project not found')
+      return
+    }
+
+    if (!formData.title?.trim()) {
+      setError('Title is required')
+      return
+    }
+
+    try {
+      const issueData: CreateIssueInput = {
+        projectId,
+        projectKey: currentProject.key,
+        title: formData.title,
+        description: formData.description || '',
+        type: formData.type || 'task',
+        priority: formData.priority || 'medium',
+        sprintId: activeSprint?.id,
+        assigneeId: formData.assigneeId,
+        storyPoints: formData.storyPoints,
+      }
+
+      await createIssue(issueData)
+
+      toast({
+        title: 'Issue Created',
+        description: `New ${formData.type} has been created and added to the sprint!`,
+      })
+
+      setShowCreateIssueModal(false)
+      setFormData({
+        title: '',
+        description: '',
+        type: 'task',
+        priority: 'medium',
+      })
+      if (projectId) fetchIssues(projectId)
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to create issue'
+      setError(errorMessage)
+    }
+  }
+
   const boardIssues = (issues[projectId || ''] || []) as Issue[]
 
   // Filter issues for the active sprint
   const sprintIssues = activeSprint
-    ? boardIssues.filter(i => i.sprintId === activeSprint.id)
+    ? boardIssues.filter(i => {
+      // Base sprint filter
+      if (i.sprintId !== activeSprint.id) return false
+
+      // Search filter
+      if (searchQuery && !i.title.toLowerCase().includes(searchQuery.toLowerCase()) && !i.key.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false
+      }
+
+      // User filter
+      if (userFilter === 'mine' && i.assigneeId !== user?.id) {
+        return false
+      }
+
+      return true
+    })
     : []
 
   const columns = {
@@ -85,7 +171,7 @@ export default function BoardPage() {
     const issue = boardIssues.find(i => i.id === draggableId)
     if (!issue) return
 
-    const newStatus = destination.droppableId as any
+    const newStatus = destination.droppableId as keyof typeof STATUS_CONFIG
 
     try {
       await updateIssue(issue.id, { ...issue, status: newStatus })
@@ -162,41 +248,92 @@ export default function BoardPage() {
   return (
     <div className="space-y-6 animate-fade-in p-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(`/projects/${projectId}`)}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold text-white">Board</h1>
-              <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 bg-cyan-500/10">
-                {activeSprint.name}
-              </Badge>
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate(`/projects/${projectId}`)}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-white">Board</h1>
+                <Badge variant="outline" className="border-cyan-500/30 text-cyan-400 bg-cyan-500/10">
+                  {activeSprint.name}
+                </Badge>
+              </div>
+              <p className="text-sm text-slate-400 mt-1">{currentProject?.name}</p>
             </div>
-            <p className="text-sm text-slate-400 mt-1">{currentProject?.name}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => setShowCreateIssueModal(true)}
+              className="btn-neon mr-2"
+              size="sm"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Issue
+            </Button>
+            <Button
+              className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/30"
+              variant="outline"
+              size="sm"
+              onClick={() => navigate(`/projects/${projectId}/backlog`)}
+            >
+              Complete Sprint
+            </Button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            Filter
-          </Button>
-          <Button variant="outline" size="sm">
-            <Settings className="w-4 h-4 mr-2" />
-            Settings
-          </Button>
-          <Button
-            className="bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border-emerald-500/30"
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              // Complete Sprint Logic could go here or navigate to completion page
-              navigate(`/projects/${projectId}/backlog`) // Just redirect to backlog for management for now
-            }}
-          >
-            Complete Sprint
-          </Button>
+
+        {/* Filters Toolbar */}
+        <div className="flex items-center justify-between p-2 glass-card rounded-lg">
+          <div className="flex items-center gap-4 flex-1">
+            {/* Search */}
+            <div className="relative max-w-xs w-full">
+              <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                <Filter className="w-4 h-4 text-slate-500" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search board..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-md py-1.5 pl-9 pr-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+              />
+            </div>
+
+            {/* My Issues Filter */}
+            <div className="h-6 w-px bg-slate-700/50" /> {/* Divider */}
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Quick Filters:</span>
+              <button
+                onClick={() => setUserFilter(userFilter === 'mine' ? 'all' : 'mine')}
+                className={cn(
+                  "px-3 py-1.5 text-sm font-medium rounded-md transition-all duration-200 border",
+                  userFilter === 'mine'
+                    ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.2)]"
+                    : "text-slate-400 border-transparent hover:text-white hover:bg-slate-700"
+                )}
+              >
+                My Issues
+              </button>
+              {/* Additional filters can go here, e.g. "Recently Updated" */}
+            </div>
+          </div>
+
+          {/* Clear Filters */}
+          {(searchQuery || userFilter !== 'all') && (
+            <button
+              onClick={() => {
+                setSearchQuery('')
+                setUserFilter('all')
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-400 hover:text-red-300 transition-colors"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Clear Filters
+            </button>
+          )}
         </div>
       </div>
 
@@ -296,6 +433,7 @@ export default function BoardPage() {
         </div>
       </DragDropContext>
 
+
       {/* Issue Detail Modal */}
       {selectedIssue && (
         <IssueDetailModal
@@ -303,6 +441,114 @@ export default function BoardPage() {
           onClose={() => setSelectedIssue(null)}
           onUpdate={() => fetchIssues(projectId!)}
         />
+      )}
+
+      {/* Create Issue Modal */}
+      {showCreateIssueModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className="w-full max-w-lg animate-scale-in glass-card border-slate-700 rounded-2xl">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-white">Create Issue in Sprint</CardTitle>
+                <Button variant="ghost" size="icon" onClick={() => setShowCreateIssueModal(false)}>
+                  <AlertCircle className="w-4 h-4 text-slate-400" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleCreateIssue} className="space-y-4">
+                {error && (
+                  <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                    <AlertCircle className="w-4 h-4" />
+                    {error}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Title *</label>
+                  <Input
+                    placeholder="What needs to be done?"
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    required
+                    className="bg-slate-900/50 border-slate-700 text-white focus:border-cyan-500 backdrop-blur-sm"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Description</label>
+                  <textarea
+                    placeholder="Describe the issue..."
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full min-h-[100px] bg-slate-900/50 border border-slate-700 rounded-md p-3 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-cyan-500 transition-colors backdrop-blur-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Type</label>
+                    <Select
+                      value={formData.type}
+                      onValueChange={(value) => setFormData({ ...formData, type: value as any })}
+                    >
+                      <SelectTrigger className="w-full bg-slate-900/50 border-slate-700 text-white focus:ring-cyan-500 backdrop-blur-sm">
+                        <SelectValue placeholder="Select type" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-700 text-white">
+                        {ISSUE_TYPES.map(type => (
+                          <SelectItem key={type.id} value={type.id} className="focus:bg-slate-800 focus:text-cyan-400">{type.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-300">Priority</label>
+                    <Select
+                      value={formData.priority}
+                      onValueChange={(value) => setFormData({ ...formData, priority: value as any })}
+                    >
+                      <SelectTrigger className="w-full bg-slate-900/50 border-slate-700 text-white focus:ring-cyan-500 backdrop-blur-sm">
+                        <SelectValue placeholder="Select priority" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-slate-900 border-slate-700 text-white">
+                        {Object.keys(PRIORITY_COLORS).map(priority => (
+                          <SelectItem key={priority} value={priority} className="focus:bg-slate-800 focus:text-cyan-400">
+                            {priority.charAt(0).toUpperCase() + priority.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-300">Story Points</label>
+                  <Input
+                    type="number"
+                    placeholder="Estimate (0-100)"
+                    value={formData.storyPoints || ''}
+                    onChange={(e) => setFormData({ ...formData, storyPoints: parseInt(e.target.value) || 0 })}
+                    className="bg-slate-900/50 border-slate-700 text-white focus:border-cyan-500 backdrop-blur-sm"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <Button type="submit" className="flex-1 btn-neon">
+                    Create Issue
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowCreateIssueModal(false)}
+                    className="flex-1 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800"
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -20,6 +20,13 @@ import LinkedIssuesSection from "@/components/LinkedIssuesSection";
 import LabelManager from "@/components/LabelManager";
 import UserSelector from "@/components/UserSelector";
 import { Button } from "@/components/ui/button";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ISSUE_TYPES, PRIORITIES, STATUSES } from "@/lib/constants";
@@ -162,12 +169,12 @@ export default function IssueDetailModal({
 
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+            <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center z-[100] p-4">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    className="w-full max-w-6xl glass-card rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
+                    className="w-full max-w-6xl glass-card bg-black/30 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
                 >
                     {/* Header */}
                     <div className="flex-none flex items-center justify-between p-6 border-b border-slate-700/50">
@@ -220,7 +227,7 @@ export default function IssueDetailModal({
                             {/* Main Content */}
                             <div className="lg:col-span-2 space-y-6">
                                 {/* Description */}
-                                <div className="glass-card rounded-xl p-5 border border-slate-700/50">
+                                <div className="bg-slate-950/20 rounded-xl p-5 border border-slate-700/50">
                                     <div className="flex items-center gap-2 mb-3">
                                         <FileText className="w-4 h-4 text-slate-400" />
                                         <h3 className="font-semibold text-white">Description</h3>
@@ -237,7 +244,7 @@ export default function IssueDetailModal({
                                             onBlur={() =>
                                                 handleUpdate("description", editValues.description)
                                             }
-                                            className="w-full min-h-[150px] bg-slate-900 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+                                            className="w-full min-h-[150px] bg-slate-900/50 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none backdrop-blur-sm"
                                             autoFocus
                                         />
                                     ) : (
@@ -258,7 +265,7 @@ export default function IssueDetailModal({
 
                                 {/* Tabs */}
                                 <Tabs defaultValue="subtasks" className="w-full">
-                                    <TabsList className="glass-card border border-slate-700/50">
+                                    <TabsList className="bg-slate-950/20 border border-slate-700/50">
                                         <TabsTrigger
                                             value="subtasks"
                                             className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400"
@@ -319,37 +326,39 @@ export default function IssueDetailModal({
                             {/* Sidebar */}
                             <div className="space-y-4">
                                 {/* Status */}
-                                <div className="glass-card rounded-xl p-4 border border-slate-700/50">
+                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
                                     <label className="text-sm font-medium text-slate-400 mb-2 block">
                                         Status
                                     </label>
-                                    <select
+                                    <Select
                                         value={editValues.status}
-                                        onChange={(e) => {
+                                        onValueChange={(value) => {
                                             setEditValues({
                                                 ...editValues,
-                                                status: e.target.value as any,
+                                                status: value as any,
                                             });
-                                            handleUpdate("status", e.target.value);
+                                            handleUpdate("status", value);
                                         }}
-                                        className={`w-full px-3 py-2 rounded-xl font-medium border border-slate-700 focus:ring-2 focus:ring-cyan-500 focus:border-transparent ${getStatusColor(
-                                            editValues.status
-                                        )}`}
                                     >
-                                        {STATUSES.map((status) => (
-                                            <option
-                                                key={status.id}
-                                                value={status.id}
-                                                className="bg-slate-900 text-white"
-                                            >
-                                                {status.label}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        <SelectTrigger className={`w-full rounded-xl font-medium border-slate-700 focus:ring-cyan-500 ${getStatusColor(editValues.status)}`}>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-slate-900 border-slate-700 text-white">
+                                            {STATUSES.map((status) => (
+                                                <SelectItem
+                                                    key={status.id}
+                                                    value={status.id}
+                                                    className="focus:bg-slate-800 focus:text-cyan-400"
+                                                >
+                                                    {status.label}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 {/* Assignee */}
-                                <div className="glass-card rounded-xl p-4 border border-slate-700/50">
+                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
                                     <label className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
                                         <User className="w-4 h-4" />
                                         Assignee
@@ -365,7 +374,7 @@ export default function IssueDetailModal({
                                 </div>
 
                                 {/* Priority */}
-                                <div className="glass-card rounded-xl p-4 border border-slate-700/50">
+                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
                                     <label className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
                                         <Tag className="w-4 h-4" />
                                         Priority
@@ -400,7 +409,7 @@ export default function IssueDetailModal({
                                 </div>
 
                                 {/* Story Points */}
-                                <div className="glass-card rounded-xl p-4 border border-slate-700/50">
+                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
                                     <label className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
                                         <Clock className="w-4 h-4" />
                                         Story Points
@@ -419,13 +428,13 @@ export default function IssueDetailModal({
                                         onBlur={() =>
                                             handleUpdate("storyPoints", editValues.storyPoints)
                                         }
-                                        className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                                        className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent backdrop-blur-sm"
                                         placeholder="Estimate effort"
                                     />
                                 </div>
 
                                 {/* Labels */}
-                                <div className="glass-card rounded-xl p-4 border border-slate-700/50">
+                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
                                     <label className="text-sm font-medium text-slate-400 mb-2 block">
                                         Labels
                                     </label>
@@ -438,7 +447,7 @@ export default function IssueDetailModal({
                                 </div>
 
                                 {/* Time Tracking */}
-                                <div className="glass-card rounded-xl p-4 border border-slate-700/50">
+                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
                                     <label className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
                                         <Clock className="w-4 h-4" />
                                         Time Tracking
@@ -447,7 +456,7 @@ export default function IssueDetailModal({
                                 </div>
 
                                 {/* Metadata */}
-                                <div className="glass-card rounded-xl p-4 border border-slate-700/50 space-y-3 text-sm">
+                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50 space-y-3 text-sm">
                                     <div>
                                         <p className="text-slate-500">Reporter</p>
                                         <p className="text-white font-medium">

@@ -14,10 +14,11 @@ A full-stack project management application inspired by Jira, built with modern 
   - Time tracking and estimation
   - Activity timeline & Comments
   - Labels and Assignees
+- **Strategic Roadmap**: Visual timeline planning with neon-glowing Gantt charts
 - **Real-time Updates**: Socket.io integration for instant collaboration
 - **Interactive UI**:
-  - Glassmorphism & Neon aesthetics
-  - 3D interactive backgrounds (Three.js)
+  - **Neural Flow** backgrounds with interactive physics
+  - **Ultra-Glass** aesthetics with global transparency
   - Smooth animations (Framer Motion)
   - Responsive Dashboard with Recharts
 - **File Attachments**: Upload and manage files

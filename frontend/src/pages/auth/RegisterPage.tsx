@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/hooks/use-toast'
 import { Mail, Lock, User, ArrowRight, Zap, Sparkles, Shield, Users, Rocket } from 'lucide-react'
-import SpaceBackground from '@/components/three/SpaceBackground'
+import AuthBackground from '@/components/auth/AuthBackground'
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -65,9 +65,9 @@ export default function RegisterPage() {
   ]
 
   return (
-    <div className="min-h-screen flex bg-slate-950 relative overflow-hidden">
-      {/* Space Background */}
-      <SpaceBackground />
+    <div className="min-h-screen flex bg-transparent relative overflow-hidden">
+      <AuthBackground />
+
 
       {/* Left Section - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative z-10">

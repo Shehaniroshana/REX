@@ -7,7 +7,7 @@ import { getInitials } from '@/lib/utils'
 import {
   LogOut, LayoutDashboard,
   Search, ChevronDown,
-  List, Zap, Shield, TrendingUp, Settings
+  List, Zap, Shield, TrendingUp, Settings, Milestone
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { wsService } from '@/services/websocketService'
@@ -41,12 +41,12 @@ export default function AppLayout() {
   }
 
   return (
-    <div className="flex min-h-screen bg-slate-950">
+    <div className="flex min-h-screen bg-transparent">
       {/* Space Background */}
       <SpaceBackground />
 
       {/* Vertical Sidebar */}
-      <aside className="fixed left-0 top-0 h-screen w-64 glass-panel border-r border-slate-800/50 z-50 flex flex-col">
+      <aside className="fixed left-0 top-0 h-screen w-64 sidebar-glass z-50 flex flex-col">
         {/* Logo Section */}
         <div className="p-6">
           <Link to="/" className="flex items-center gap-3 group">
@@ -74,7 +74,7 @@ export default function AppLayout() {
             <Link
               to="/"
               className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname === '/'
-                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 font-semibold'
+                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)] font-bold'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
             >
@@ -159,7 +159,7 @@ export default function AppLayout() {
             {/* Project Links */}
             {projectId ? (
               <div className="space-y-1">
-                <Link to={`/projects/${projectId}/board`} className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.includes('/board') ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                <Link to={`/projects/${projectId}/board`} className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.includes('/board') ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
                   <LayoutDashboard className="w-4 h-4" /> Board
                 </Link>
                 <Link to={`/projects/${projectId}/backlog`} className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.includes('/backlog') ? 'bg-cyan-500/20 text-cyan-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
@@ -170,6 +170,9 @@ export default function AppLayout() {
                 </Link>
                 <Link to={`/projects/${projectId}/reports`} className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.includes('/reports') ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
                   <TrendingUp className="w-4 h-4" /> Reports
+                </Link>
+                <Link to={`/projects/${projectId}/roadmap`} className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.includes('/roadmap') ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
+                  <Milestone className="w-4 h-4" /> Roadmap
                 </Link>
                 <Link to={`/projects/${projectId}/settings`} className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.includes('/settings') ? 'bg-slate-500/20 text-slate-300' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
                   <Settings className="w-4 h-4" /> Settings
@@ -220,15 +223,7 @@ export default function AppLayout() {
       <main className="flex-1 ml-64 min-h-screen">
         <div className="container mx-auto p-8 max-w-7xl animate-fade-in">
           <div className="mb-8 flex items-center justify-between">
-            {/* Top Bar / Breadcrumbs / Search - Optional here since nav is on left */}
-            <div className="relative group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-cyan-400 transition-colors" />
-              <input
-                type="text"
-                placeholder="Search tasks..."
-                className="w-64 pl-10 pr-4 py-2 bg-slate-800/30 border border-slate-700/30 focus:border-cyan-500/50 rounded-xl text-sm text-slate-200 placeholder:text-slate-500 focus:ring-2 focus:ring-cyan-500/20 transition-all focus:bg-slate-800/50"
-              />
-            </div>
+
           </div>
           <Outlet />
         </div>

@@ -81,11 +81,10 @@
   
   /* Dark Glass Card */
   .glass-card {
-    @apply bg-slate-900/60 backdrop-blur-xl;
-    border: 1px solid rgba(56, 189, 248, 0.1);
-    box-shadow: 
-      0 0 40px rgba(6, 182, 212, 0.03),
-      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    background: rgba(15, 23, 42, 0.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
   }
 
   .glass-card-hover {
@@ -103,8 +102,17 @@
 
   /* Ultra Glass Panel */
   .glass-panel {
-    @apply bg-slate-950/40 backdrop-blur-2xl;
-    border: 1px solid rgba(148, 163, 184, 0.1);
+    background: rgba(15, 23, 42, 0.1);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  /* Premium Sidebar Glass */
+  .sidebar-glass {
+    background: rgba(15, 23, 42, 0.05);
+    backdrop-filter: blur(4px);
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 5px 0 30px rgba(0,0,0,0.1);
   }
 
   /* ===================================
@@ -433,7 +441,7 @@
   /* ===================================
      SKELETON LOADING
      =================================== */
-  
+
   .skeleton {
     @apply bg-slate-800/50 animate-pulse rounded;
   }
@@ -453,7 +461,7 @@
     0% { background-position: -200% 0; }
     100% { background-position: 200% 0; }
   }
-}
+
 
 @layer utilities {
   /* ===================================
@@ -484,6 +492,10 @@
     animation: float 6s ease-in-out infinite;
   }
 
+  .animate-blob {
+    animation: blob 7s infinite;
+  }
+
   /* Animation Delays */
   .delay-75 { animation-delay: 75ms; }
   .delay-100 { animation-delay: 100ms; }
@@ -491,6 +503,8 @@
   .delay-200 { animation-delay: 200ms; }
   .delay-300 { animation-delay: 300ms; }
   .delay-500 { animation-delay: 500ms; }
+  .delay-2000 { animation-delay: 2000ms; }
+  .delay-4000 { animation-delay: 4000ms; }
 
   /* Line Clamp */
   .line-clamp-1 {
@@ -592,15 +606,18 @@
   100% { background-position: 0% 50%; }
 }
 
-/* Meteor animation */
-@keyframes meteor {
+@keyframes blob {
   0% {
-    transform: translateX(0) translateY(0);
-    opacity: 1;
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
   }
   100% {
-    transform: translateX(-500px) translateY(300px);
-    opacity: 0;
+    transform: translate(0px, 0px) scale(1);
   }
 }
 
@@ -617,4 +634,5 @@
     background: white !important;
     color: black !important;
   }
+}
 }

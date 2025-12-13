@@ -31,7 +31,7 @@ export default function UserSelector({ selectedUserId, onSelect, label, placehol
         value={selectedUserId || 'unassigned'}
         onValueChange={(value) => onSelect(value === 'unassigned' ? undefined : value)}
       >
-        <SelectTrigger className="w-full h-10 bg-slate-900 border-slate-700 text-white focus:ring-cyan-500">
+        <SelectTrigger className="w-full h-10 bg-slate-900/50 border-slate-700 text-white focus:ring-cyan-500">
           <div className="flex items-center gap-2 w-full">
             {selectedUser ? (
               <>

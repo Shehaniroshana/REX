@@ -8,11 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
-import { 
-  Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, 
+import {
+  Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell
 } from 'recharts'
-import { 
+import {
   Plus, Calendar, Play, CheckCircle,
   Target, Users, TrendingUp, BarChart2,
   Edit2, CalendarDays, Activity, Flame, Zap
@@ -49,7 +49,7 @@ export default function SprintManagementPage() {
   const { currentProject, fetchProject } = useProjectStore()
   const { sprints, fetchSprints, createSprint, startSprint, completeSprint, updateSprint, isLoading } = useSprintStore()
   const { toast } = useToast()
-  
+
   // State
   const [selectedSprint, setSelectedSprint] = useState<Sprint | null>(null)
   const [showCreateModal, setShowCreateModal] = useState(false)
@@ -58,7 +58,7 @@ export default function SprintManagementPage() {
   const [selectedIssue, setSelectedIssue] = useState<Issue | null>(null)
   const [incompleteIssueAction, setIncompleteIssueAction] = useState<'backlog' | 'next'>('backlog')
   const [activeTab, setActiveTab] = useState<'overview' | 'burndown' | 'velocity' | 'capacity'>('overview')
-  
+
   // Create sprint form
   const [newSprint, setNewSprint] = useState({
     name: '',
@@ -83,37 +83,37 @@ export default function SprintManagementPage() {
   }, [sprints])
 
   const projectIssues = issues[projectId || ''] || []
-  
+
   const sprintMetrics = useMemo(() => {
     if (!selectedSprint) return null
-    
+
     const sprintIssues = projectIssues.filter((i: Issue) => i.sprintId === selectedSprint.id)
     const totalPoints = sprintIssues.reduce((acc: number, i: Issue) => acc + (i.storyPoints || 0), 0)
     const completedPoints = sprintIssues
       .filter((i: Issue) => i.status === 'done')
       .reduce((acc: number, i: Issue) => acc + (i.storyPoints || 0), 0)
-    
+
     const byStatus = {
       todo: sprintIssues.filter((i: Issue) => i.status === 'todo').length,
       in_progress: sprintIssues.filter((i: Issue) => i.status === 'in_progress').length,
       in_review: sprintIssues.filter((i: Issue) => i.status === 'in_review').length,
       done: sprintIssues.filter((i: Issue) => i.status === 'done').length,
     }
-    
+
     let daysRemaining = 0
     let totalDays = 0
     let daysElapsed = 0
-    
+
     if (selectedSprint.startDate && selectedSprint.endDate) {
       const start = parseISO(selectedSprint.startDate)
       const end = parseISO(selectedSprint.endDate)
       const now = new Date()
-      
+
       totalDays = differenceInDays(end, start)
       daysElapsed = Math.max(0, differenceInDays(now, start))
       daysRemaining = Math.max(0, differenceInDays(end, now))
     }
-    
+
     return {
       totalIssues: sprintIssues.length,
       totalPoints,
@@ -130,23 +130,23 @@ export default function SprintManagementPage() {
 
   const burndownData = useMemo(() => {
     if (!selectedSprint || !sprintMetrics) return []
-    
+
     const { totalPoints, totalDays } = sprintMetrics
     if (!selectedSprint.startDate || totalDays === 0) return []
-    
+
     const startDate = parseISO(selectedSprint.startDate)
     const data = []
-    
+
     const pointsPerDay = totalPoints / totalDays
-    
+
     for (let i = 0; i <= totalDays; i++) {
       const date = addDays(startDate, i)
       const idealRemaining = Math.max(0, totalPoints - (pointsPerDay * i))
-      
-      const actualRemaining = i <= sprintMetrics.daysElapsed 
+
+      const actualRemaining = i <= sprintMetrics.daysElapsed
         ? Math.max(0, totalPoints - (sprintMetrics.completedPoints * (i / sprintMetrics.daysElapsed || 1)))
         : null
-      
+
       data.push({
         day: i,
         date: format(date, 'MMM dd'),
@@ -154,20 +154,27 @@ export default function SprintManagementPage() {
         actual: actualRemaining !== null ? Math.round(actualRemaining * 10) / 10 : undefined,
       })
     }
-    
+
     return data
   }, [selectedSprint, sprintMetrics])
 
   const velocityData = useMemo(() => {
-    const completedSprints = sprints.filter((s: Sprint) => s.status === 'completed')
-    
+    // Sort sprints by date to show trend correctly
+    const completedSprints = sprints
+      .filter((s: Sprint) => s.status === 'completed')
+      .sort((a, b) => {
+        const dateA = a.endDate ? new Date(a.endDate).getTime() : 0;
+        const dateB = b.endDate ? new Date(b.endDate).getTime() : 0;
+        return dateA - dateB;
+      });
+
     return completedSprints.slice(-6).map((sprint: Sprint) => {
       const sprintIssues = projectIssues.filter((i: Issue) => i.sprintId === sprint.id)
       const completedPoints = sprintIssues
         .filter((i: Issue) => i.status === 'done')
         .reduce((acc: number, i: Issue) => acc + (i.storyPoints || 0), 0)
       const totalPoints = sprintIssues.reduce((acc: number, i: Issue) => acc + (i.storyPoints || 0), 0)
-      
+
       return {
         name: sprint.name,
         completed: completedPoints,
@@ -184,7 +191,7 @@ export default function SprintManagementPage() {
 
   const statusDistribution = useMemo(() => {
     if (!sprintMetrics) return []
-    
+
     return [
       { name: 'To Do', value: sprintMetrics.byStatus.todo, color: STATUS_COLORS.todo },
       { name: 'In Progress', value: sprintMetrics.byStatus.in_progress, color: STATUS_COLORS.in_progress },
@@ -195,7 +202,7 @@ export default function SprintManagementPage() {
 
   const handleCreateSprint = async () => {
     if (!projectId || !newSprint.name.trim()) return
-    
+
     try {
       await createSprint({
         projectId,
@@ -204,12 +211,12 @@ export default function SprintManagementPage() {
         startDate: newSprint.startDate ? new Date(newSprint.startDate).toISOString() : undefined,
         endDate: newSprint.endDate ? new Date(newSprint.endDate).toISOString() : undefined,
       })
-      
+
       toast({
         title: 'Sprint Created',
         description: `${newSprint.name} has been created successfully`,
       })
-      
+
       setNewSprint({ name: '', goal: '', startDate: '', endDate: '' })
       setShowCreateModal(false)
     } catch (error) {
@@ -222,7 +229,7 @@ export default function SprintManagementPage() {
 
   const handleStartSprint = async () => {
     if (!selectedSprint) return
-    
+
     try {
       await startSprint(selectedSprint.id)
       toast({
@@ -239,17 +246,17 @@ export default function SprintManagementPage() {
 
   const handleCompleteSprint = async () => {
     if (!selectedSprint) return
-    
+
     try {
       const incompleteIssues = sprintMetrics?.issues.filter(
         (i: Issue) => i.status !== 'done'
       ) || []
-      
+
       if (incompleteIssues.length > 0) {
         const nextSprint = sprints.find(
           (s: Sprint) => s.status === 'planned' && s.id !== selectedSprint.id
         )
-        
+
         for (const issue of incompleteIssues) {
           await updateIssue(issue.id, {
             ...issue,
@@ -257,16 +264,16 @@ export default function SprintManagementPage() {
           })
         }
       }
-      
+
       await completeSprint(selectedSprint.id)
-      
+
       toast({
         title: 'Sprint Completed',
-        description: incompleteIssues.length > 0 
+        description: incompleteIssues.length > 0
           ? `${incompleteIssues.length} incomplete issues moved to ${incompleteIssueAction === 'next' ? 'next sprint' : 'backlog'}`
           : 'All issues completed!',
       })
-      
+
       setShowCompleteModal(false)
     } catch (error) {
       toast({
@@ -278,7 +285,7 @@ export default function SprintManagementPage() {
 
   const handleUpdateSprint = async () => {
     if (!selectedSprint) return
-    
+
     try {
       await updateSprint(selectedSprint.id, {
         name: newSprint.name || selectedSprint.name,
@@ -286,12 +293,12 @@ export default function SprintManagementPage() {
         startDate: newSprint.startDate ? new Date(newSprint.startDate).toISOString() : selectedSprint.startDate,
         endDate: newSprint.endDate ? new Date(newSprint.endDate).toISOString() : selectedSprint.endDate,
       })
-      
+
       toast({
         title: 'Sprint Updated',
         description: 'Sprint details have been updated',
       })
-      
+
       setShowEditModal(false)
     } catch (error) {
       toast({
@@ -308,17 +315,17 @@ export default function SprintManagementPage() {
       .reduce((acc: number, i: Issue) => acc + (i.storyPoints || 0), 0)
     const totalPoints = sprintIssues.reduce((acc: number, i: Issue) => acc + (i.storyPoints || 0), 0)
     const progress = totalPoints > 0 ? (completedPoints / totalPoints) * 100 : 0
-    
+
     const isSelected = selectedSprint?.id === sprint.id
-    
+
     return (
       <div
         onClick={() => setSelectedSprint(sprint)}
         className={cn(
           'p-4 rounded-xl border-2 cursor-pointer transition-all duration-300',
           'hover:shadow-lg hover:scale-[1.02] glass-card',
-          isSelected 
-            ? 'border-cyan-500 bg-cyan-500/10 shadow-[0_0_20px_rgba(6,182,212,0.2)]' 
+          isSelected
+            ? 'border-cyan-500 bg-cyan-500/10 shadow-[0_0_20px_rgba(6,182,212,0.2)]'
             : 'border-slate-800 hover:border-slate-700'
         )}
       >
@@ -326,7 +333,7 @@ export default function SprintManagementPage() {
           <div>
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-white">{sprint.name}</h3>
-              <Badge 
+              <Badge
                 className={cn(
                   'text-xs',
                   sprint.status === 'active' && 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 animate-pulse',
@@ -347,7 +354,7 @@ export default function SprintManagementPage() {
             </div>
           )}
         </div>
-        
+
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
             <span className="text-slate-400">{sprintIssues.length} issues</span>
@@ -355,7 +362,7 @@ export default function SprintManagementPage() {
           </div>
           <Progress value={progress} className="h-2 bg-slate-800" />
         </div>
-        
+
         {sprint.startDate && sprint.endDate && (
           <div className="flex items-center gap-2 mt-3 text-xs text-slate-500">
             <CalendarDays className="w-3 h-3" />
@@ -371,7 +378,7 @@ export default function SprintManagementPage() {
       {/* Header */}
       <div className="glass-card p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div 
+          <div
             className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold shadow-lg shadow-cyan-500/20"
             style={{ backgroundColor: currentProject?.color || '#06b6d4' }}
           >
@@ -386,7 +393,7 @@ export default function SprintManagementPage() {
             </p>
           </div>
         </div>
-        
+
         <div className="flex items-center gap-3">
           <Button
             variant="outline"
@@ -424,8 +431,8 @@ export default function SprintManagementPage() {
                 <div className="flex items-center gap-4">
                   <div className={cn(
                     'w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg',
-                    selectedSprint.status === 'active' 
-                      ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20' 
+                    selectedSprint.status === 'active'
+                      ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20'
                       : selectedSprint.status === 'completed'
                         ? 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-blue-500/20'
                         : 'bg-slate-700 shadow-xl'
@@ -443,7 +450,7 @@ export default function SprintManagementPage() {
                       <h2 className="text-2xl font-bold text-white">
                         {selectedSprint.name}
                       </h2>
-                      <Badge 
+                      <Badge
                         className={cn(
                           'text-sm',
                           selectedSprint.status === 'active' ? 'bg-emerald-500 text-white' : 'bg-slate-700 text-slate-300'
@@ -457,7 +464,7 @@ export default function SprintManagementPage() {
                     )}
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
                   <Button
                     variant="outline"
@@ -476,7 +483,7 @@ export default function SprintManagementPage() {
                     <Edit2 className="w-4 h-4 mr-2" />
                     Edit
                   </Button>
-                  
+
                   {selectedSprint.status === 'planned' && sprintMetrics.totalIssues > 0 && (
                     <Button
                       onClick={handleStartSprint}
@@ -487,7 +494,7 @@ export default function SprintManagementPage() {
                       Start Sprint
                     </Button>
                   )}
-                  
+
                   {selectedSprint.status === 'active' && (
                     <Button
                       onClick={() => setShowCompleteModal(true)}
@@ -500,7 +507,7 @@ export default function SprintManagementPage() {
                   )}
                 </div>
               </div>
-              
+
               {/* Sprint Timeline */}
               {selectedSprint.startDate && selectedSprint.endDate && (
                 <div className="mt-6">
@@ -516,10 +523,10 @@ export default function SprintManagementPage() {
                     </span>
                   </div>
                   <div className="relative h-3 bg-slate-800 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="absolute inset-y-0 left-0 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-full transition-all duration-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
-                      style={{ 
-                        width: `${Math.min(100, (sprintMetrics.daysElapsed / sprintMetrics.totalDays) * 100)}%` 
+                      style={{
+                        width: `${Math.min(100, (sprintMetrics.daysElapsed / sprintMetrics.totalDays) * 100)}%`
                       }}
                     />
                   </div>
@@ -541,7 +548,7 @@ export default function SprintManagementPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="glass-card p-4 rounded-xl border-l-4 border-l-purple-500">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center">
@@ -553,7 +560,7 @@ export default function SprintManagementPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="glass-card p-4 rounded-xl border-l-4 border-l-emerald-500">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
@@ -565,7 +572,7 @@ export default function SprintManagementPage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="glass-card p-4 rounded-xl border-l-4 border-l-amber-500">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
@@ -622,8 +629,8 @@ export default function SprintManagementPage() {
                           <Cell key={`cell-${index}`} fill={entry.color} stroke="rgba(0,0,0,0.5)" />
                         ))}
                       </Pie>
-                      <Tooltip 
-                         contentStyle={{ 
+                      <Tooltip
+                        contentStyle={{
                           backgroundColor: '#1e293b',
                           borderColor: '#334155',
                           borderRadius: '12px',
@@ -652,7 +659,7 @@ export default function SprintManagementPage() {
                       onClick={() => setSelectedIssue(issue)}
                       className="flex items-center gap-3 p-3 rounded-xl border border-slate-700/50 bg-slate-800/30 hover:bg-slate-700/50 cursor-pointer transition-colors group"
                     >
-                      <div 
+                      <div
                         className="w-2 h-2 rounded-full shadow-[0_0_5px_currentColor]"
                         style={{ backgroundColor: STATUS_COLORS[issue.status], color: STATUS_COLORS[issue.status] }}
                       />
@@ -689,15 +696,15 @@ export default function SprintManagementPage() {
                   <AreaChart data={burndownData}>
                     <defs>
                       <linearGradient id="colorActual" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor={CHART_COLORS.primary} stopOpacity={0.3}/>
-                        <stop offset="95%" stopColor={CHART_COLORS.primary} stopOpacity={0}/>
+                        <stop offset="5%" stopColor={CHART_COLORS.primary} stopOpacity={0.3} />
+                        <stop offset="95%" stopColor={CHART_COLORS.primary} stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94a3b8' }} stroke="#475569" />
                     <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} stroke="#475569" />
-                    <Tooltip 
-                      contentStyle={{ 
+                    <Tooltip
+                      contentStyle={{
                         backgroundColor: '#1e293b',
                         borderColor: '#334155',
                         borderRadius: '12px',
@@ -706,18 +713,18 @@ export default function SprintManagementPage() {
                       }}
                     />
                     <Legend />
-                    <Line 
-                      type="monotone" 
-                      dataKey="ideal" 
+                    <Line
+                      type="monotone"
+                      dataKey="ideal"
                       stroke={CHART_COLORS.secondary}
                       strokeWidth={2}
                       strokeDasharray="5 5"
                       dot={false}
                       name="Ideal"
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="actual" 
+                    <Area
+                      type="monotone"
+                      dataKey="actual"
                       stroke={CHART_COLORS.primary}
                       strokeWidth={3}
                       fill="url(#colorActual)"
@@ -751,8 +758,8 @@ export default function SprintManagementPage() {
                       <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                       <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#94a3b8' }} stroke="#475569" />
                       <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} stroke="#475569" />
-                      <Tooltip 
-                        contentStyle={{ 
+                      <Tooltip
+                        contentStyle={{
                           backgroundColor: '#1e293b',
                           borderColor: '#334155',
                           borderRadius: '12px',
@@ -761,14 +768,14 @@ export default function SprintManagementPage() {
                         cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                       />
                       <Legend />
-                      <Bar 
-                        dataKey="committed" 
+                      <Bar
+                        dataKey="committed"
                         fill={CHART_COLORS.secondary}
                         radius={[4, 4, 0, 0]}
                         name="Committed"
                       />
-                      <Bar 
-                        dataKey="completed" 
+                      <Bar
+                        dataKey="completed"
                         fill={CHART_COLORS.success}
                         radius={[4, 4, 0, 0]}
                         name="Completed"
@@ -792,18 +799,22 @@ export default function SprintManagementPage() {
               {(() => {
                 // Calculate capacity data per team member
                 const capacityData = sprintMetrics?.issues.reduce((acc: any[], issue: Issue) => {
-                  const assigneeName = issue.assignee 
+                  const assigneeName = issue.assignee
                     ? `${issue.assignee.firstName} ${issue.assignee.lastName}`
                     : 'Unassigned'
-                  const existing = acc.find(a => a.name === assigneeName)
+
+                  const existingIndex = acc.findIndex((a: any) => a.name === assigneeName)
                   const points = issue.storyPoints || 0
                   const isCompleted = issue.status === 'done'
-                  
-                  if (existing) {
-                    existing.total += points
-                    if (isCompleted) existing.completed += points
-                    else existing.remaining += points
-                    existing.issues += 1
+
+                  if (existingIndex >= 0) {
+                    acc[existingIndex].total += points
+                    if (isCompleted) {
+                      acc[existingIndex].completed += points
+                    } else {
+                      acc[existingIndex].remaining += points
+                    }
+                    acc[existingIndex].issues += 1
                   } else {
                     acc.push({
                       name: assigneeName,
@@ -837,15 +848,15 @@ export default function SprintManagementPage() {
                         <BarChart data={capacityData} layout="vertical" barGap={4}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#334155" horizontal={false} />
                           <XAxis type="number" tick={{ fontSize: 12, fill: '#94a3b8' }} stroke="#475569" />
-                          <YAxis 
-                            type="category" 
-                            dataKey="name" 
-                            tick={{ fontSize: 12, fill: '#94a3b8' }} 
-                            stroke="#475569" 
+                          <YAxis
+                            type="category"
+                            dataKey="name"
+                            tick={{ fontSize: 12, fill: '#94a3b8' }}
+                            stroke="#475569"
                             width={120}
                           />
-                          <Tooltip 
-                            contentStyle={{ 
+                          <Tooltip
+                            contentStyle={{
                               backgroundColor: '#1e293b',
                               borderColor: '#334155',
                               borderRadius: '12px',
@@ -854,15 +865,15 @@ export default function SprintManagementPage() {
                             cursor={{ fill: 'rgba(255,255,255,0.05)' }}
                           />
                           <Legend />
-                          <Bar 
-                            dataKey="completed" 
+                          <Bar
+                            dataKey="completed"
                             stackId="a"
                             fill={CHART_COLORS.success}
                             radius={[0, 0, 0, 0]}
                             name="Completed"
                           />
-                          <Bar 
-                            dataKey="remaining" 
+                          <Bar
+                            dataKey="remaining"
                             stackId="a"
                             fill={CHART_COLORS.warning}
                             radius={[0, 4, 4, 0]}
@@ -877,7 +888,7 @@ export default function SprintManagementPage() {
                       {capacityData.map((member: any) => {
                         const progress = member.total > 0 ? (member.completed / member.total) * 100 : 0
                         return (
-                          <div 
+                          <div
                             key={member.name}
                             className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50"
                           >
@@ -930,7 +941,7 @@ export default function SprintManagementPage() {
                 onChange={(e) => setNewSprint({ ...newSprint, name: e.target.value })}
                 className="bg-slate-900/50 border-slate-700"
               />
-               <Input
+              <Input
                 placeholder="Goal"
                 value={newSprint.goal}
                 onChange={(e) => setNewSprint({ ...newSprint, goal: e.target.value })}
@@ -958,7 +969,7 @@ export default function SprintManagementPage() {
           </div>
         </div>
       )}
-      
+
       {/* Edit Sprint Modal */}
       {showEditModal && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
@@ -1005,7 +1016,7 @@ export default function SprintManagementPage() {
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
           <div className="w-full max-w-md glass-card rounded-2xl animate-scale-in p-6">
             <h3 className="text-xl font-bold text-white mb-4">Complete Sprint: {selectedSprint?.name}</h3>
-            
+
             <div className="space-y-4">
               <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
                 <p className="text-sm text-slate-300 flex justify-between">

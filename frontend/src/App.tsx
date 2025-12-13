@@ -12,6 +12,7 @@ import ProjectPage from '@/pages/ProjectPage'
 import BoardPage from '@/pages/BoardPage'
 import BacklogPage from '@/pages/BacklogPage'
 import ReportsPage from '@/pages/ReportsPage'
+import RoadmapPage from '@/pages/RoadmapPage'
 import IssueDetailPage from '@/pages/IssueDetailPage'
 import AdminPage from '@/pages/AdminPage'
 import SprintManagementPage from '@/pages/SprintManagementPage'
@@ -79,6 +80,7 @@ function App() {
             <Route path="/projects/:projectId/board" element={<BoardPage />} />
             <Route path="/projects/:projectId/backlog" element={<BacklogPage />} />
             <Route path="/projects/:projectId/reports" element={<ReportsPage />} />
+            <Route path="/projects/:projectId/roadmap" element={<RoadmapPage />} />
             <Route path="/projects/:projectId/sprints" element={<SprintManagementPage />} />
             <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
             <Route path="/projects/:projectId/issues/:issueId" element={<IssueDetailPage />} />

@@ -12,6 +12,14 @@ import { useAuthStore } from '@/store/authStore'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 const roleColors = {
     admin: 'from-purple-500 to-indigo-600',
@@ -43,7 +51,7 @@ export default function AdminPage() {
     const [projects, setProjects] = useState<Project[]>([])
     const [activeTab, setActiveTab] = useState<'users' | 'projects'>('users')
     const [showCreateModal, setShowCreateModal] = useState(false)
-    const [showUserMenu, setShowUserMenu] = useState<string | null>(null)
+
     const [projectSearchQuery, setProjectSearchQuery] = useState('')
 
     // Reset Password state
@@ -155,7 +163,7 @@ export default function AdminPage() {
         try {
             const updatedUser = await adminService.updateUserRole(userId, role)
             setUsers(users.map(u => u.id === userId ? updatedUser : u))
-            setShowUserMenu(null)
+
             toast({
                 title: 'Success',
                 description: 'User role updated successfully',
@@ -232,7 +240,7 @@ export default function AdminPage() {
             lastName: user.lastName,
             email: user.email,
         })
-        setShowUserMenu(null)
+
     }
 
     const handleUpdateUser = async () => {
@@ -322,7 +330,7 @@ export default function AdminPage() {
 
     if (currentUser?.role !== 'admin') {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+            <div className="min-h-screen flex items-center justify-center bg-transparent">
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -339,9 +347,9 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-950 animate-fade-in pb-12">
+        <div className="min-h-screen bg-transparent animate-fade-in pb-12">
             {/* Header */}
-            <div className="bg-slate-950/80 backdrop-blur-xl border-b border-slate-800/50 sticky top-0 z-20">
+            <div className="sidebar-glass sticky top-0 z-20 border-b border-white/5">
                 <div className="max-w-7xl mx-auto px-6 py-6">
                     <div className="flex items-center justify-between">
                         <div>
@@ -598,71 +606,47 @@ export default function AdminPage() {
                                                                                 {user.isActive ? <ToggleRight className="w-5 h-5" /> : <ToggleLeft className="w-5 h-5" />}
                                                                             </button>
 
-                                                                            <div className="relative group/menu">
-                                                                                <button
-                                                                                    onClick={() => setShowUserMenu(showUserMenu === user.id ? null : user.id)}
-                                                                                    className="p-2 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-white transition-colors"
-                                                                                >
-                                                                                    <MoreVertical className="w-5 h-5" />
-                                                                                </button>
+                                                                            <DropdownMenu>
+                                                                                <DropdownMenuTrigger asChild>
+                                                                                    <button className="p-2 rounded-lg hover:bg-slate-800 text-slate-500 hover:text-white transition-colors outline-none focus:ring-2 focus:ring-cyan-500/50">
+                                                                                        <MoreVertical className="w-5 h-5" />
+                                                                                    </button>
+                                                                                </DropdownMenuTrigger>
+                                                                                <DropdownMenuContent align="end" className="w-56 glass-card border-slate-700 bg-slate-900/95 backdrop-blur-xl">
+                                                                                    <DropdownMenuLabel className="text-xs font-semibold text-slate-500 uppercase">User Actions</DropdownMenuLabel>
+                                                                                    <DropdownMenuItem onClick={() => openEditUser(user)} className="cursor-pointer">
+                                                                                        <Edit2 className="w-4 h-4 mr-2" />
+                                                                                        Edit Details
+                                                                                    </DropdownMenuItem>
+                                                                                    <DropdownMenuItem onClick={() => setShowResetPasswordModal(user.id)} className="cursor-pointer">
+                                                                                        <Key className="w-4 h-4 mr-2" />
+                                                                                        Reset Password
+                                                                                    </DropdownMenuItem>
 
-                                                                                {/* Dropdown Menu */}
-                                                                                <AnimatePresence>
-                                                                                    {showUserMenu === user.id && (
-                                                                                        <motion.div
-                                                                                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                                                                                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                                                                                            exit={{ opacity: 0, scale: 0.95, y: 10 }}
-                                                                                            className="absolute right-0 top-full mt-2 w-48 glass-card rounded-xl shadow-2xl border border-slate-700 py-2 z-50 bg-slate-900"
+                                                                                    <DropdownMenuSeparator className="bg-slate-700" />
+                                                                                    <DropdownMenuLabel className="text-xs font-semibold text-slate-500 uppercase">Change Role</DropdownMenuLabel>
+
+                                                                                    {['admin', 'manager', 'user'].map((role) => (
+                                                                                        <DropdownMenuItem
+                                                                                            key={role}
+                                                                                            onClick={() => handleUpdateRole(user.id, role)}
+                                                                                            className={`cursor-pointer ${user.role === role ? 'text-cyan-400 bg-cyan-900/10' : 'text-slate-300'}`}
                                                                                         >
-                                                                                            <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase">User Actions</div>
-                                                                                            <button
-                                                                                                onClick={() => openEditUser(user)}
-                                                                                                className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-cyan-400 flex items-center gap-2 transition-colors"
-                                                                                            >
-                                                                                                <Edit2 className="w-4 h-4" />
-                                                                                                Edit Details
-                                                                                            </button>
-                                                                                            <button
-                                                                                                onClick={() => {
-                                                                                                    setShowResetPasswordModal(user.id)
-                                                                                                    setShowUserMenu(null)
-                                                                                                }}
-                                                                                                className="w-full text-left px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-amber-400 flex items-center gap-2 transition-colors"
-                                                                                            >
-                                                                                                <Key className="w-4 h-4" />
-                                                                                                Reset Password
-                                                                                            </button>
+                                                                                            {role === 'admin' && <Crown className="w-4 h-4 mr-2" />}
+                                                                                            {role === 'manager' && <ShieldCheck className="w-4 h-4 mr-2" />}
+                                                                                            {role === 'user' && <Shield className="w-4 h-4 mr-2" />}
+                                                                                            {role.charAt(0).toUpperCase() + role.slice(1)}
+                                                                                            {user.role === role && <Check className="w-4 h-4 ml-auto" />}
+                                                                                        </DropdownMenuItem>
+                                                                                    ))}
 
-                                                                                            <div className="h-px bg-slate-700 my-2" />
-
-                                                                                            <div className="px-3 py-2 text-xs font-semibold text-slate-500 uppercase">Change Role</div>
-                                                                                            {['admin', 'manager', 'user'].map((role) => (
-                                                                                                <button
-                                                                                                    key={role}
-                                                                                                    onClick={() => handleUpdateRole(user.id, role)}
-                                                                                                    className={`w-full text-left px-3 py-2 text-sm hover:bg-slate-800 flex items-center gap-2 transition-colors ${user.role === role ? 'text-cyan-400 bg-cyan-900/10' : 'text-slate-300'
-                                                                                                        }`}
-                                                                                                >
-                                                                                                    {role === 'admin' && <Crown className="w-4 h-4" />}
-                                                                                                    {role === 'manager' && <ShieldCheck className="w-4 h-4" />}
-                                                                                                    {role === 'user' && <Shield className="w-4 h-4" />}
-                                                                                                    {role.charAt(0).toUpperCase() + role.slice(1)}
-                                                                                                    {user.role === role && <Check className="w-4 h-4 ml-auto" />}
-                                                                                                </button>
-                                                                                            ))}
-                                                                                            <div className="h-px bg-slate-700 my-2" />
-                                                                                            <button
-                                                                                                onClick={() => handleDeleteUser(user.id)}
-                                                                                                className="w-full text-left px-3 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 flex items-center gap-2 transition-colors"
-                                                                                            >
-                                                                                                <Trash2 className="w-4 h-4" />
-                                                                                                Delete User
-                                                                                            </button>
-                                                                                        </motion.div>
-                                                                                    )}
-                                                                                </AnimatePresence>
-                                                                            </div>
+                                                                                    <DropdownMenuSeparator className="bg-slate-700" />
+                                                                                    <DropdownMenuItem onClick={() => handleDeleteUser(user.id)} className="text-red-400 hover:text-red-300 hover:bg-red-500/10 cursor-pointer focus:bg-red-500/10 focus:text-red-300">
+                                                                                        <Trash2 className="w-4 h-4 mr-2" />
+                                                                                        Delete User
+                                                                                    </DropdownMenuItem>
+                                                                                </DropdownMenuContent>
+                                                                            </DropdownMenu>
                                                                         </>
                                                                     )}
                                                                     {user.id === currentUser?.id && (

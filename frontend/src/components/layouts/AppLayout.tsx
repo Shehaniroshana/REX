@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from 'react'
 import { wsService } from '@/services/websocketService'
 import NotificationDropdown from '@/components/NotificationDropdown'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 import SpaceBackground from '@/components/three/SpaceBackground'
 
 export default function AppLayout() {
@@ -189,7 +190,10 @@ export default function AppLayout() {
         {/* User Profile Section */}
         <div className="p-4 border-t border-slate-800/50 bg-slate-900/30">
           <div className="flex items-center justify-between mb-4">
-            <NotificationDropdown />
+            <div className="flex items-center gap-2">
+              <NotificationDropdown />
+              <LanguageSwitcher />
+            </div>
             <button
               onClick={handleLogout}
               className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"

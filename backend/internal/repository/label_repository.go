@@ -23,7 +23,10 @@ func (r *LabelRepository) CreateLabel(label *models.Label) error {
 func (r *LabelRepository) GetLabelByID(id uuid.UUID) (*models.Label, error) {
 	var label models.Label
 	err := r.db.First(&label, "id = ?", id).Error
-	return &label, err
+	if err != nil {
+		return nil, err
+	}
+	return &label, nil
 }
 
 // GetLabelsByProject retrieves all labels for a project
@@ -40,7 +43,10 @@ func (r *LabelRepository) GetLabelByName(projectID uuid.UUID, name string) (*mod
 	var label models.Label
 	err := r.db.Where("project_id = ? AND name = ?", projectID, name).
 		First(&label).Error
-	return &label, err
+	if err != nil {
+		return nil, err
+	}
+	return &label, nil
 }
 
 // UpdateLabel updates a label

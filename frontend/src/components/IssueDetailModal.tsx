@@ -8,6 +8,10 @@ import {
     MessageSquare,
     Link as LinkIcon,
     Activity,
+    Maximize2,
+    Calendar,
+    CheckCircle2,
+    Layout
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Issue } from "@/types";
@@ -20,16 +24,11 @@ import LinkedIssuesSection from "@/components/LinkedIssuesSection";
 import LabelManager from "@/components/LabelManager";
 import UserSelector from "@/components/UserSelector";
 import { Button } from "@/components/ui/button";
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ISSUE_TYPES, PRIORITIES, STATUSES } from "@/lib/constants";
+import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 
 interface IssueDetailModalProps {
     issue: Issue;
@@ -56,6 +55,7 @@ export default function IssueDetailModal({
     const [comments, setComments] = useState<any[]>([]);
     const [activities, setActivities] = useState<any[]>([]);
     const { toast } = useToast();
+    const { t } = useTranslation();
 
     useEffect(() => {
         fetchIssueDetails();
@@ -121,14 +121,14 @@ export default function IssueDetailModal({
             onUpdate?.();
 
             toast({
-                title: "Issue Updated",
-                description: `${field} has been updated successfully`,
+                title: t('common.updated'),
+                description: t('issue.update_success'),
             });
         } catch (error) {
             console.error("Failed to update issue:", error);
             toast({
                 title: "Error",
-                description: "Failed to update issue",
+                description: t('issue.update_failed'),
                 variant: "destructive",
             });
         }
@@ -146,338 +146,266 @@ export default function IssueDetailModal({
         return typeConfig?.color || "bg-slate-600";
     };
 
-    const getPriorityColor = (priority: string) => {
-        const colors: Record<string, string> = {
-            highest: "bg-red-500",
-            high: "bg-orange-500",
-            medium: "bg-amber-500",
-            low: "bg-cyan-400",
-            lowest: "bg-slate-400",
-        };
-        return colors[priority] || "bg-slate-400";
-    };
-
-    const getStatusColor = (status: string) => {
-        const colors: Record<string, string> = {
-            todo: "bg-slate-700 text-slate-300",
-            in_progress: "bg-blue-500/20 text-blue-400",
-            in_review: "bg-purple-500/20 text-purple-400",
-            done: "bg-emerald-500/20 text-emerald-400",
-        };
-        return colors[status] || "bg-slate-700 text-slate-300";
-    };
-
     return (
         <AnimatePresence>
-            <div className="fixed inset-0 bg-transparent backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+            <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4 sm:p-6">
                 <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    className="w-full max-w-6xl glass-card bg-black/30 rounded-2xl shadow-2xl flex flex-col max-h-[90vh]"
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                    transition={{ duration: 0.2 }}
+                    className="w-full max-w-[1200px] h-[90vh] glass-card bg-[#0a0e17]/95 rounded-2xl shadow-[0_0_50px_rgba(0,0,0,0.5)] flex flex-col border border-white/10 overflow-hidden"
                 >
                     {/* Header */}
-                    <div className="flex-none flex items-center justify-between p-6 border-b border-slate-700/50">
-                        <div className="flex items-center gap-4 flex-1">
-                            <div className={`p-2 rounded-xl ${getTypeColor(issue.type)}`}>
+                    <div className="flex-none flex items-start justify-between p-6 border-b border-white/5 bg-slate-900/50 backdrop-blur-md">
+                        <div className="flex items-start gap-4 flex-1">
+                            {/* Type Icon */}
+                            <div className={`mt-1 p-2.5 rounded-xl ${getTypeColor(issue.type)} bg-opacity-20 border border-white/10 shadow-[0_0_15px_rgba(0,0,0,0.3)]`}>
                                 {getTypeIcon(issue.type)}
                             </div>
-                            <div className="flex-1">
+
+                            {/* Title & Key */}
+                            <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-3 text-sm text-slate-400 font-mono mb-1">
+                                    <span>{issue.key}</span>
+                                    <span className="text-slate-600">/</span>
+                                    <span className="capitalize">{issue.type}</span>
+                                </div>
                                 {editing.title ? (
                                     <input
                                         type="text"
                                         value={editValues.title}
-                                        onChange={(e) =>
-                                            setEditValues({ ...editValues, title: e.target.value })
-                                        }
+                                        onChange={(e) => setEditValues({ ...editValues, title: e.target.value })}
                                         onBlur={() => handleUpdate("title", editValues.title)}
                                         onKeyDown={(e) => {
-                                            if (e.key === "Enter")
-                                                handleUpdate("title", editValues.title);
-                                            if (e.key === "Escape")
-                                                setEditing({ ...editing, title: false });
+                                            if (e.key === "Enter") handleUpdate("title", editValues.title);
+                                            if (e.key === "Escape") setEditing({ ...editing, title: false });
                                         }}
-                                        className="text-2xl font-bold text-white bg-transparent border-b-2 border-cyan-500 focus:outline-none w-full"
+                                        className="text-2xl font-bold text-white bg-slate-800/50 border-b-2 border-cyan-500 focus:outline-none w-full px-2 py-1 rounded"
                                         autoFocus
                                     />
                                 ) : (
                                     <h2
-                                        className="text-2xl font-bold text-white cursor-pointer hover:text-cyan-400 transition-colors"
+                                        className="text-2xl font-bold text-white cursor-pointer hover:text-cyan-400 transition-colors leading-tight"
                                         onClick={() => setEditing({ ...editing, title: true })}
                                     >
                                         {issue.title}
                                     </h2>
                                 )}
-                                <p className="text-sm text-slate-400 mt-1">{issue.key}</p>
                             </div>
                         </div>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={onClose}
-                            className="hover:bg-slate-800 text-slate-400 hover:text-white"
-                        >
-                            <X className="w-5 h-5" />
-                        </Button>
+
+                        {/* Actions */}
+                        <div className="flex items-center gap-2">
+                            <Link to={`/projects/${issue.projectId}/issues/${issue.id}`} target="_blank">
+                                <Button variant="ghost" size="icon" className="text-slate-400 hover:text-cyan-400 hover:bg-cyan-500/10 transition-colors">
+                                    <Maximize2 className="w-5 h-5" />
+                                </Button>
+                            </Link>
+                            <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+                                <X className="w-6 h-6" />
+                            </Button>
+                        </div>
                     </div>
 
                     {/* Scrollable Content */}
-                    <div className="flex-1 overflow-y-auto p-6">
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            {/* Main Content */}
-                            <div className="lg:col-span-2 space-y-6">
+                    <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 min-h-full">
+
+                            {/* LEFT COLUMN: Main Content (8 cols) */}
+                            <div className="lg:col-span-8 p-6 lg:p-8 space-y-8 border-r border-white/5 bg-gradient-to-b from-transparent to-slate-900/30">
+
                                 {/* Description */}
-                                <div className="bg-slate-950/20 rounded-xl p-5 border border-slate-700/50">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <FileText className="w-4 h-4 text-slate-400" />
-                                        <h3 className="font-semibold text-white">Description</h3>
+                                <div className="group space-y-3">
+                                    <div className="flex items-center gap-2 text-slate-400 font-medium">
+                                        <FileText className="w-4 h-4 text-cyan-500" />
+                                        <h3>{t('common.description')}</h3>
                                     </div>
-                                    {editing.description ? (
-                                        <textarea
-                                            value={editValues.description}
-                                            onChange={(e) =>
-                                                setEditValues({
-                                                    ...editValues,
-                                                    description: e.target.value,
-                                                })
-                                            }
-                                            onBlur={() =>
-                                                handleUpdate("description", editValues.description)
-                                            }
-                                            className="w-full min-h-[150px] bg-slate-900/50 border border-slate-700 rounded-xl p-3 text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none backdrop-blur-sm"
-                                            autoFocus
-                                        />
-                                    ) : (
-                                        <div
-                                            className="text-slate-300 cursor-pointer hover:bg-slate-800/50 rounded-lg p-3 transition-colors min-h-[100px]"
-                                            onClick={() =>
-                                                setEditing({ ...editing, description: true })
-                                            }
-                                        >
-                                            {issue.description || (
-                                                <span className="text-slate-500 italic">
-                                                    Click to add a description...
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
+                                    <div className="bg-slate-900/40 rounded-xl p-1 border border-white/5 hover:border-cyan-500/30 transition-colors">
+                                        {editing.description ? (
+                                            <textarea
+                                                value={editValues.description}
+                                                onChange={(e) => setEditValues({ ...editValues, description: e.target.value })}
+                                                onBlur={() => handleUpdate("description", editValues.description)}
+                                                className="w-full min-h-[150px] bg-slate-950/50 rounded-lg p-4 text-slate-200 focus:ring-1 focus:ring-cyan-500 focus:outline-none resize-y font-mono text-sm leading-relaxed border-none"
+                                                autoFocus
+                                            />
+                                        ) : (
+                                            <div
+                                                className="prose prose-invert max-w-none text-slate-300 cursor-pointer min-h-[100px] p-4 rounded-lg hover:bg-slate-800/30 transition-colors"
+                                                onClick={() => setEditing({ ...editing, description: true })}
+                                            >
+                                                {issue.description ? (
+                                                    <div className="whitespace-pre-wrap">{issue.description}</div>
+                                                ) : (
+                                                    <span className="text-slate-500 italic flex items-center gap-2">
+                                                        <Layout className="w-4 h-4" /> {t('issue.add_description')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
-                                {/* Tabs */}
+                                {/* Tabs Section */}
                                 <Tabs defaultValue="subtasks" className="w-full">
-                                    <TabsList className="bg-slate-950/20 border border-slate-700/50">
-                                        <TabsTrigger
-                                            value="subtasks"
-                                            className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400"
-                                        >
-                                            Subtasks
+                                    <TabsList className="bg-slate-900/50 p-1 border border-white/5 rounded-xl backdrop-blur-md mb-6 w-full justify-start">
+                                        <TabsTrigger value="subtasks" className="data-[state=active]:bg-purple-500/20 data-[state=active]:text-purple-400">
+                                            {t('common.subtasks')}
                                         </TabsTrigger>
-                                        <TabsTrigger
-                                            value="comments"
-                                            className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400"
-                                        >
-                                            <MessageSquare className="w-4 h-4 mr-2" />
-                                            Comments
+                                        <TabsTrigger value="comments" className="data-[state=active]:bg-blue-500/20 data-[state=active]:text-blue-400">
+                                            {t('common.comments')} <span className="ml-2 text-xs bg-slate-800 px-1.5 py-0.5 rounded-full">{comments.length}</span>
                                         </TabsTrigger>
-                                        <TabsTrigger
-                                            value="activity"
-                                            className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400"
-                                        >
-                                            <Activity className="w-4 h-4 mr-2" />
-                                            Activity
+                                        <TabsTrigger value="activity" className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400">
+                                            {t('common.activity')}
                                         </TabsTrigger>
-                                        <TabsTrigger
-                                            value="linked"
-                                            className="data-[state=active]:bg-cyan-500/20 data-[state=active]:text-cyan-400"
-                                        >
-                                            <LinkIcon className="w-4 h-4 mr-2" />
-                                            Linked Issues
+                                        <TabsTrigger value="linked" className="data-[state=active]:bg-emerald-500/20 data-[state=active]:text-emerald-400">
+                                            {t('common.linked_issues')}
                                         </TabsTrigger>
                                     </TabsList>
 
-                                    <TabsContent value="subtasks" className="mt-4">
-                                        <SubtaskSection
-                                            issueId={issue.id}
-                                            onSubtaskChange={fetchIssueDetails}
-                                        />
-                                    </TabsContent>
-
-                                    <TabsContent value="comments" className="mt-4">
-                                        <CommentSection
-                                            issueId={issue.id}
-                                            comments={comments}
-                                            onCommentAdded={fetchComments}
-                                        />
-                                    </TabsContent>
-
-                                    <TabsContent value="activity" className="mt-4">
-                                        <ActivityTimeline activities={activities} />
-                                    </TabsContent>
-
-                                    <TabsContent value="linked" className="mt-4">
-                                        <LinkedIssuesSection
-                                            issueId={issue.id}
-                                            projectId={issue.projectId}
-                                        />
-                                    </TabsContent>
+                                    <div className="min-h-[300px]">
+                                        <TabsContent value="subtasks" className="mt-0">
+                                            <SubtaskSection issueId={issue.id} onSubtaskChange={fetchIssueDetails} />
+                                        </TabsContent>
+                                        <TabsContent value="comments" className="mt-0">
+                                            <CommentSection issueId={issue.id} comments={comments} onCommentAdded={fetchComments} />
+                                        </TabsContent>
+                                        <TabsContent value="activity" className="mt-0">
+                                            <ActivityTimeline activities={activities} />
+                                        </TabsContent>
+                                        <TabsContent value="linked" className="mt-0">
+                                            <LinkedIssuesSection issueId={issue.id} projectId={issue.projectId} />
+                                        </TabsContent>
+                                    </div>
                                 </Tabs>
                             </div>
 
-                            {/* Sidebar */}
-                            <div className="space-y-4">
-                                {/* Status */}
-                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
-                                    <label className="text-sm font-medium text-slate-400 mb-2 block">
-                                        Status
+                            {/* RIGHT COLUMN: Sidebar (4 cols) */}
+                            <div className="lg:col-span-4 bg-slate-950/30 p-6 lg:p-8 space-y-6">
+
+                                {/* Status Hero */}
+                                <div className="space-y-2">
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                                        <CheckCircle2 className="w-3 h-3" /> {t('common.status')}
                                     </label>
-                                    <Select
+                                    <select
+                                        className="w-full bg-slate-900 border border-slate-700/50 rounded-lg px-4 py-3 text-white focus:border-cyan-500 outline-none transition-all hover:bg-slate-800 cursor-pointer appearance-none text-base font-medium shadow-lg"
                                         value={editValues.status}
-                                        onValueChange={(value) => {
-                                            setEditValues({
-                                                ...editValues,
-                                                status: value as any,
-                                            });
-                                            handleUpdate("status", value);
+                                        onChange={(e) => {
+                                            setEditValues({ ...editValues, status: e.target.value as any })
+                                            handleUpdate("status", e.target.value)
+                                        }}
+                                        style={{
+                                            backgroundImage: "linear-gradient(45deg, transparent 50%, gray 50%), linear-gradient(135deg, gray 50%, transparent 50%)",
+                                            backgroundPosition: "calc(100% - 20px) calc(1em + 2px), calc(100% - 15px) calc(1em + 2px)",
+                                            backgroundSize: "5px 5px, 5px 5px",
+                                            backgroundRepeat: "no-repeat"
                                         }}
                                     >
-                                        <SelectTrigger className={`w-full rounded-xl font-medium border-slate-700 focus:ring-cyan-500 ${getStatusColor(editValues.status)}`}>
-                                            <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent className="bg-slate-900 border-slate-700 text-white">
-                                            {STATUSES.map((status) => (
-                                                <SelectItem
-                                                    key={status.id}
-                                                    value={status.id}
-                                                    className="focus:bg-slate-800 focus:text-cyan-400"
-                                                >
-                                                    {status.label}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
+                                        {STATUSES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
+                                    </select>
                                 </div>
 
-                                {/* Assignee */}
-                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
-                                    <label className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
-                                        <User className="w-4 h-4" />
-                                        Assignee
-                                    </label>
-                                    <UserSelector
-                                        selectedUserId={editValues.assigneeId}
-                                        onSelect={(userId) => {
-                                            setEditValues({ ...editValues, assigneeId: userId });
-                                            handleUpdate("assigneeId", userId);
-                                        }}
-                                        placeholder="Unassigned"
-                                    />
-                                </div>
+                                <div className="h-px bg-white/5" />
 
-                                {/* Priority */}
-                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
-                                    <label className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
-                                        <Tag className="w-4 h-4" />
-                                        Priority
-                                    </label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {PRIORITIES.map((priority) => (
-                                            <button
-                                                key={priority}
-                                                onClick={() => {
-                                                    setEditValues({
-                                                        ...editValues,
-                                                        priority: priority as any,
-                                                    });
-                                                    handleUpdate("priority", priority);
+                                {/* Details Group */}
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-sm font-semibold text-slate-300">{t('common.details')}</h4>
+                                    </div>
+
+                                    <div className="space-y-4">
+                                        {/* Priority */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-slate-500">{t('common.priority')}</label>
+                                            <div className="flex flex-wrap gap-2">
+                                                {PRIORITIES.map((priority) => (
+                                                    <button
+                                                        key={priority}
+                                                        onClick={() => {
+                                                            setEditValues({ ...editValues, priority: priority as any });
+                                                            handleUpdate("priority", priority);
+                                                        }}
+                                                        className={`px-2.5 py-1 rounded text-xs font-medium capitalize transition-all border ${editValues.priority === priority
+                                                            ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/50 shadow-[0_0_10px_rgba(6,182,212,0.2)]"
+                                                            : "bg-slate-900/50 text-slate-400 border-slate-800 hover:border-slate-600"
+                                                            }`}
+                                                    >
+                                                        {priority}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Assignee */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-slate-500">{t('common.assignee')}</label>
+                                            <UserSelector
+                                                selectedUserId={editValues.assigneeId}
+                                                onSelect={(userId) => {
+                                                    setEditValues({ ...editValues, assigneeId: userId });
+                                                    handleUpdate("assigneeId", userId);
                                                 }}
-                                                className={`px-3 py-1.5 rounded-lg text-sm font-medium capitalize transition-all ${editValues.priority === priority
-                                                    ? "bg-cyan-500/20 text-cyan-400 ring-2 ring-cyan-500"
-                                                    : "bg-slate-800 text-slate-400 hover:bg-slate-700"
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <div
-                                                        className={`w-2 h-2 rounded-full ${getPriorityColor(
-                                                            priority
-                                                        )}`}
-                                                    />
-                                                    {priority}
-                                                </div>
-                                            </button>
-                                        ))}
+                                                placeholder={t('common.unassigned')}
+                                            />
+                                        </div>
+
+                                        {/* Story Points */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-slate-500">{t('common.story_points')}</label>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    className="w-full bg-slate-900/50 border border-slate-700/50 rounded-lg pl-3 pr-8 py-2 text-white focus:border-cyan-500 outline-none text-sm"
+                                                    value={editValues.storyPoints || ''}
+                                                    onChange={(e) => setEditValues({ ...editValues, storyPoints: e.target.value ? parseInt(e.target.value) : undefined })}
+                                                    onBlur={() => handleUpdate("storyPoints", editValues.storyPoints)}
+                                                    placeholder="-"
+                                                />
+                                                <div className="absolute right-3 top-2 text-slate-600 text-[10px] font-bold uppercase tracking-wider">PTS</div>
+                                            </div>
+                                        </div>
+
+                                        {/* Labels */}
+                                        <div className="space-y-1.5">
+                                            <label className="text-xs font-medium text-slate-500">{t('common.labels')}</label>
+                                            <LabelManager
+                                                issueId={issue.id}
+                                                projectId={issue.projectId}
+                                                selectedLabels={issue.labels || []}
+                                                onUpdate={fetchIssueDetails}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Story Points */}
-                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
-                                    <label className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
-                                        <Clock className="w-4 h-4" />
-                                        Story Points
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        max="21"
-                                        value={editValues.storyPoints || ""}
-                                        onChange={(e) => {
-                                            const val = e.target.value
-                                                ? parseInt(e.target.value)
-                                                : undefined;
-                                            setEditValues({ ...editValues, storyPoints: val });
-                                        }}
-                                        onBlur={() =>
-                                            handleUpdate("storyPoints", editValues.storyPoints)
-                                        }
-                                        className="w-full px-3 py-2 bg-slate-900/50 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-cyan-500 focus:border-transparent backdrop-blur-sm"
-                                        placeholder="Estimate effort"
-                                    />
-                                </div>
+                                <div className="h-px bg-white/5" />
 
-                                {/* Labels */}
-                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
-                                    <label className="text-sm font-medium text-slate-400 mb-2 block">
-                                        Labels
-                                    </label>
-                                    <LabelManager
-                                        issueId={issue.id}
-                                        projectId={issue.projectId}
-                                        selectedLabels={issue.labels || []}
-                                        onUpdate={fetchIssueDetails}
-                                    />
-                                </div>
-
-                                {/* Time Tracking */}
-                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50">
-                                    <label className="text-sm font-medium text-slate-400 mb-2 flex items-center gap-2">
-                                        <Clock className="w-4 h-4" />
-                                        Time Tracking
-                                    </label>
+                                {/* Tracking */}
+                                <div className="space-y-4">
+                                    <h4 className="text-sm font-semibold text-slate-300">{t('common.tracking')}</h4>
                                     <TimeTracker issueId={issue.id} />
                                 </div>
 
-                                {/* Metadata */}
-                                <div className="bg-slate-950/20 rounded-xl p-4 border border-slate-700/50 space-y-3 text-sm">
-                                    <div>
-                                        <p className="text-slate-500">Reporter</p>
-                                        <p className="text-white font-medium">
-                                            {issue.reporter
-                                                ? `${issue.reporter.firstName} ${issue.reporter.lastName}`
-                                                : "Unknown"}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-slate-500">Created</p>
-                                        <p className="text-white font-medium">
-                                            {new Date(issue.createdAt).toLocaleDateString()}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-slate-500">Updated</p>
-                                        <p className="text-white font-medium">
-                                            {new Date(issue.updatedAt).toLocaleDateString()}
-                                        </p>
+                                {/* Meta Info */}
+                                <div className="pt-4 mt-auto">
+                                    <div className="bg-slate-900/30 rounded-lg p-3 space-y-2 text-xs border border-white/5 text-slate-500">
+                                        <div className="flex justify-between">
+                                            <span>{t('common.reporter')}</span>
+                                            <span className="text-slate-300">{issue.reporter?.firstName} {issue.reporter?.lastName}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>{t('common.created')}</span>
+                                            <span className="text-slate-300">{new Date(issue.createdAt).toLocaleDateString()}</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>{t('common.updated')}</span>
+                                            <span className="text-slate-300">{new Date(issue.updatedAt).toLocaleDateString()}</span>
+                                        </div>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     </div>

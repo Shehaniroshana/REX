@@ -13,6 +13,8 @@ interface ProjectState {
     updateProject: (id: string, data: UpdateProjectInput) => Promise<void>
     deleteProject: (id: string) => Promise<void>
     setCurrentProject: (project: Project | null) => void
+    addMember: (projectId: string, userId: string, role?: string) => Promise<void>
+    removeMember: (projectId: string, userId: string) => Promise<void>
 }
 
 export const useProjectStore = create<ProjectState>((set) => ({
@@ -89,4 +91,36 @@ export const useProjectStore = create<ProjectState>((set) => ({
     setCurrentProject: (project: Project | null) => {
         set({ currentProject: project })
     },
+
+    addMember: async (projectId: string, userId: string, role: string = 'member') => {
+        set({ isLoading: true, error: null })
+        try {
+            await projectService.addMember(projectId, userId, role)
+            const project = await projectService.getById(projectId)
+            set((state) => ({
+                projects: state.projects.map((p) => (p.id === projectId ? project : p)),
+                currentProject: state.currentProject?.id === projectId ? project : state.currentProject,
+                isLoading: false,
+            }))
+        } catch (error: any) {
+            set({ error: error.message, isLoading: false })
+            throw error
+        }
+    },
+
+    removeMember: async (projectId: string, userId: string) => {
+        set({ isLoading: true, error: null })
+        try {
+            await projectService.removeMember(projectId, userId)
+            const project = await projectService.getById(projectId)
+            set((state) => ({
+                projects: state.projects.map((p) => (p.id === projectId ? project : p)),
+                currentProject: state.currentProject?.id === projectId ? project : state.currentProject,
+                isLoading: false,
+            }))
+        } catch (error: any) {
+            set({ error: error.message, isLoading: false })
+            throw error
+        }
+    }
 }))

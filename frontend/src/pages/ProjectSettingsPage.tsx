@@ -16,13 +16,6 @@ import { getInitials } from '@/lib/utils'
 import { userService } from '@/services/userService'
 import type { User } from '@/types'
 
-interface ProjectMember {
-  userId: string
-  user: User
-  role: 'owner' | 'admin' | 'member' | 'viewer'
-  joinedAt: string
-}
-
 const ROLES = [
   { id: 'owner', label: 'Owner', icon: Crown, color: 'text-amber-500 bg-amber-500/20', border: 'border-amber-500/30', description: 'Full access and ownership' },
   { id: 'admin', label: 'Admin', icon: Shield, color: 'text-purple-400 bg-purple-500/20', border: 'border-purple-500/30', description: 'Manage members and settings' },
@@ -38,7 +31,14 @@ const PROJECT_COLORS = [
 export default function ProjectSettingsPage() {
   const { projectId } = useParams<{ projectId: string }>()
   const navigate = useNavigate()
-  const { currentProject, fetchProject, updateProject, deleteProject } = useProjectStore()
+  const {
+    currentProject,
+    fetchProject,
+    updateProject,
+    deleteProject,
+    addMember,
+    removeMember,
+  } = useProjectStore()
   const { user: currentUser } = useAuthStore()
   const { toast } = useToast()
 
@@ -47,7 +47,6 @@ export default function ProjectSettingsPage() {
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<User[]>([])
-  const [members, setMembers] = useState<ProjectMember[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
   const [formData, setFormData] = useState({
@@ -59,7 +58,6 @@ export default function ProjectSettingsPage() {
   useEffect(() => {
     if (projectId) {
       fetchProject(projectId)
-      loadMembers()
     }
   }, [projectId])
 
@@ -70,23 +68,8 @@ export default function ProjectSettingsPage() {
         description: currentProject.description || '',
         color: currentProject.color || '#4F46E5',
       })
-      // Simulate members for demo
-      if (currentUser) {
-        setMembers([
-          {
-            userId: currentUser.id,
-            user: currentUser,
-            role: 'owner',
-            joinedAt: currentProject.createdAt,
-          }
-        ])
-      }
     }
   }, [currentProject])
-
-  const loadMembers = async () => {
-    // In a real app, this would fetch from API
-  }
 
   const handleSearchUsers = async (query: string) => {
     setSearchQuery(query)
@@ -97,8 +80,9 @@ export default function ProjectSettingsPage() {
 
     try {
       const results = await userService.searchUsers(query)
+      const currentMembers = currentProject?.members || []
       const filtered = results.filter(
-        u => !members.some(m => m.userId === u.id)
+        u => !currentMembers.some(m => m.userId === u.id)
       )
       setSearchResults(filtered)
     } catch (error) {
@@ -107,40 +91,49 @@ export default function ProjectSettingsPage() {
   }
 
   const handleAddMember = async (user: User, role: string = 'member') => {
-    const newMember: ProjectMember = {
-      userId: user.id,
-      user,
-      role: role as any,
-      joinedAt: new Date().toISOString(),
+    if (!currentProject) return
+
+    try {
+      await addMember(currentProject.id, user.id, role)
+      setSearchQuery('')
+      setSearchResults([])
+
+      toast({
+        title: 'Member Added! 👥',
+        description: `${user.firstName} ${user.lastName} has been added to the project`,
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.response?.data?.error || 'Failed to add member',
+        variant: 'destructive'
+      })
     }
-
-    setMembers([...members, newMember])
-    setSearchQuery('')
-    setSearchResults([])
-
-    toast({
-      title: 'Member Added! 👥',
-      description: `${user.firstName} ${user.lastName} has been added to the project`,
-    })
   }
 
   const handleRemoveMember = async (userId: string) => {
+    if (!currentProject) return
     if (!confirm('Remove this member from the project?')) return
 
-    setMembers(members.filter(m => m.userId !== userId))
-    toast({
-      title: 'Member Removed',
-      description: 'The member has been removed from the project',
-    })
+    try {
+      await removeMember(currentProject.id, userId)
+      toast({
+        title: 'Member Removed',
+        description: 'The member has been removed from the project',
+      })
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: 'Failed to remove member',
+        variant: 'destructive'
+      })
+    }
   }
 
   const handleUpdateRole = async (userId: string, newRole: string) => {
-    setMembers(members.map(m =>
-      m.userId === userId ? { ...m, role: newRole as any } : m
-    ))
     toast({
-      title: 'Role Updated',
-      description: `Member role changed to ${ROLES.find(r => r.id === newRole)?.label}`,
+      title: 'Not Implemented',
+      description: 'Role updates are coming soon!',
     })
   }
 
@@ -190,7 +183,7 @@ export default function ProjectSettingsPage() {
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
-    { id: 'members', label: 'Members', icon: Users, badge: members.length },
+    { id: 'members', label: 'Members', icon: Users, badge: currentProject?.members?.length || 0 },
     { id: 'roles', label: 'Roles & Access', icon: Shield },
     { id: 'danger', label: 'Danger Zone', icon: AlertTriangle },
   ]
@@ -239,8 +232,8 @@ export default function ProjectSettingsPage() {
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`w-full flex items-center justify-between px-3 py-3 rounded-xl text-sm font-medium transition-all ${activeTab === tab.id
-                        ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.1)]'
-                        : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
+                      ? 'bg-cyan-500/10 text-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.1)]'
+                      : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200'
                       }`}
                   >
                     <span className="flex items-center gap-3">
@@ -344,8 +337,8 @@ export default function ProjectSettingsPage() {
                           key={color}
                           onClick={() => setFormData({ ...formData, color })}
                           className={`w-10 h-10 rounded-xl transition-all hover:scale-110 shadow-lg ${formData.color === color
-                              ? 'ring-2 ring-offset-2 ring-offset-slate-900 ring-white scale-110'
-                              : 'opacity-70 hover:opacity-100'
+                            ? 'ring-2 ring-offset-2 ring-offset-slate-900 ring-white scale-110'
+                            : 'opacity-70 hover:opacity-100'
                             }`}
                           style={{ backgroundColor: color }}
                         />
@@ -382,57 +375,70 @@ export default function ProjectSettingsPage() {
                   </Button>
                 </div>
                 <div className="p-6 space-y-3">
-                  {members.map((member, index) => (
-                    <div
-                      key={member.userId}
-                      className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 rounded-xl animate-fade-in hover:border-slate-700 transition-colors"
-                      style={{ animationDelay: `${index * 50}ms` }}
-                    >
-                      <div className="flex items-center gap-4">
-                        <Avatar className="w-10 h-10 ring-2 ring-slate-800">
-                          <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold">
-                            {getInitials(member.user.firstName, member.user.lastName)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold text-white flex items-center gap-2">
-                            {member.user.firstName} {member.user.lastName}
-                            {member.role === 'owner' && (
-                              <Crown className="w-3.5 h-3.5 text-amber-500" />
-                            )}
-                          </p>
-                          <p className="text-sm text-slate-500">{member.user.email}</p>
+                  {(currentProject?.members || []).map((member, index) => {
+                    // Safety check if user object exists
+                    if (!member.user) return null;
+
+                    return (
+                      <div
+                        key={member.userId}
+                        className="flex items-center justify-between p-4 bg-slate-900/50 border border-slate-800 rounded-xl animate-fade-in hover:border-slate-700 transition-colors"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                      >
+                        <div className="flex items-center gap-4">
+                          <Avatar className="w-10 h-10 ring-2 ring-slate-800">
+                            <AvatarFallback className="bg-gradient-to-br from-indigo-500 to-purple-600 text-white font-bold">
+                              {getInitials(member.user.firstName, member.user.lastName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-semibold text-white flex items-center gap-2">
+                              {member.user.firstName} {member.user.lastName}
+                              {member.role === 'owner' && (
+                                <Crown className="w-3.5 h-3.5 text-amber-500" />
+                              )}
+                            </p>
+                            <p className="text-sm text-slate-500">{member.user.email}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <select
+                            value={member.role}
+                            onChange={(e) => handleUpdateRole(member.userId, e.target.value)}
+                            disabled={member.role === 'owner'}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium border bg-slate-900 focus:outline-none focus:ring-1 focus:ring-cyan-500 ${ROLES.find(r => r.id === member.role)?.color
+                              } ${ROLES.find(r => r.id === member.role)?.border}`}
+                          >
+                            {ROLES.map((role) => (
+                              <option key={role.id} value={role.id} className="bg-slate-900 text-white">
+                                {role.label}
+                              </option>
+                            ))}
+                          </select>
+
+                          {member.role !== 'owner' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveMember(member.userId)}
+                              className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                            >
+                              <UserMinus className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </div>
+                    )
+                  })}
 
-                      <div className="flex items-center gap-3">
-                        <select
-                          value={member.role}
-                          onChange={(e) => handleUpdateRole(member.userId, e.target.value)}
-                          disabled={member.role === 'owner'}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium border bg-slate-900 focus:outline-none focus:ring-1 focus:ring-cyan-500 ${ROLES.find(r => r.id === member.role)?.color
-                            } ${ROLES.find(r => r.id === member.role)?.border}`}
-                        >
-                          {ROLES.map((role) => (
-                            <option key={role.id} value={role.id} className="bg-slate-900 text-white">
-                              {role.label}
-                            </option>
-                          ))}
-                        </select>
-
-                        {member.role !== 'owner' && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveMember(member.userId)}
-                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                          >
-                            <UserMinus className="w-4 h-4" />
-                          </Button>
-                        )}
-                      </div>
+                  {(!currentProject?.members || currentProject.members.length === 0) && (
+                    <div className="text-center py-6 text-slate-500">
+                      <Users className="w-10 h-10 mx-auto mb-2 opacity-30" />
+                      <p className="font-medium">No members found</p>
+                      <p className="text-sm">Something might be wrong with the data</p>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
@@ -463,7 +469,7 @@ export default function ProjectSettingsPage() {
               <div className="p-6 space-y-4">
                 {ROLES.map((role) => {
                   const Icon = role.icon
-                  const memberCount = members.filter(m => m.role === role.id).length
+                  const memberCount = (currentProject?.members || []).filter(m => m.role === role.id).length
                   return (
                     <div
                       key={role.id}

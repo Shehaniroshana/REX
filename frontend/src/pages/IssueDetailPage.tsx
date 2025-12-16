@@ -14,11 +14,13 @@ import ActivityTimeline from '@/components/ActivityTimeline'
 import LinkedIssuesSection from '@/components/LinkedIssuesSection'
 import LabelManager from '@/components/LabelManager'
 import UserSelector from '@/components/UserSelector'
+import { useTranslation } from 'react-i18next'
 
 export default function IssueDetailPage() {
     const { projectId, issueId } = useParams()
     const navigate = useNavigate()
     const { toast } = useToast()
+    const { t } = useTranslation()
     const [issue, setIssue] = useState<Issue | null>(null)
     const [loading, setLoading] = useState(true)
     const [comments, setComments] = useState<any[]>([])
@@ -53,7 +55,7 @@ export default function IssueDetailPage() {
             })
         } catch (error) {
             console.error("Failed to fetch issue:", error)
-            toast({ title: "Error", description: "Failed to load issue", variant: "destructive" })
+            toast({ title: "Error", description: t('issue.not_found'), variant: "destructive" })
         } finally {
             setLoading(false)
         }
@@ -86,27 +88,27 @@ export default function IssueDetailPage() {
             await issueService.update(issue.id, updateData)
             await fetchIssueDetails()
             setEditing({ ...editing, [field]: false })
-            toast({ title: "Updated", description: `${field} updated successfully` })
+            toast({ title: t('common.updated'), description: t('issue.update_success') })
         } catch (error) {
             console.error("Failed to update:", error)
-            toast({ title: "Error", description: "Update failed", variant: "destructive" })
+            toast({ title: "Error", description: t('issue.update_failed'), variant: "destructive" })
         }
     }
 
     const handleDelete = async () => {
-        if (!issue || !confirm("Are you sure you want to delete this issue?")) return
+        if (!issue || !confirm(t('issue.delete_confirm'))) return
         try {
             await issueService.delete(issue.id)
-            toast({ title: "Deleted", description: "Issue deleted successfully" })
+            toast({ title: t('common.delete'), description: t('issue.delete_success') })
             navigate(`/projects/${projectId}/backlog`)
         } catch (error) {
             console.error("Failed to delete:", error)
-            toast({ title: "Error", description: "Delete failed", variant: "destructive" })
+            toast({ title: "Error", description: t('issue.delete_failed'), variant: "destructive" })
         }
     }
 
-    if (loading) return <div className="p-8 text-center text-slate-400">Loading issue details...</div>
-    if (!issue) return <div className="p-8 text-center text-slate-400">Issue not found</div>
+    if (loading) return <div className="p-8 text-center text-slate-400">{t('issue.loading_details')}</div>
+    if (!issue) return <div className="p-8 text-center text-slate-400">{t('issue.not_found')}</div>
 
     const getTypeColor = (type: string) => ISSUE_TYPES.find((t) => t.id === type)?.color || "bg-slate-600"
     const getTypeIcon = (type: string) => {
@@ -122,7 +124,7 @@ export default function IssueDetailPage() {
                     <Link to={`/projects/${projectId}/board`}>
                         <Button variant="ghost" size="sm" className="text-slate-400 hover:text-white">
                             <ArrowLeft className="w-4 h-4 mr-2" />
-                            Back to Board
+                            {t('common.back_to_board')}
                         </Button>
                     </Link>
                     <div className="h-6 w-px bg-slate-700/50" />
@@ -131,7 +133,7 @@ export default function IssueDetailPage() {
                 <div className="flex items-center gap-2">
                     <Button variant="destructive" size="sm" onClick={handleDelete} className="bg-red-500/10 text-red-400 hover:bg-red-500/20 border border-red-500/20">
                         <Trash2 className="w-4 h-4 mr-2" />
-                        Delete Issue
+                        {t('common.delete_issue')}
                     </Button>
                 </div>
             </div>
@@ -165,7 +167,7 @@ export default function IssueDetailPage() {
                     <div className="glass-card p-6 rounded-2xl border border-slate-700/50">
                         <div className="flex items-center gap-2 mb-4 text-slate-400">
                             <FileText className="w-5 h-5" />
-                            <h3 className="font-semibold">Description</h3>
+                            <h3 className="font-semibold">{t('common.description')}</h3>
                         </div>
                         {editing.description ? (
                             <textarea
@@ -180,7 +182,7 @@ export default function IssueDetailPage() {
                                 className="prose prose-invert max-w-none text-slate-300 cursor-pointer hover:bg-slate-800/30 p-4 rounded-xl transition-colors min-h-[100px]"
                                 onClick={() => setEditing({ ...editing, description: true })}
                             >
-                                {issue.description || <span className="text-slate-500 italic">No description provided. Click to add one...</span>}
+                                {issue.description || <span className="text-slate-500 italic">{t('issue.no_description')} {t('issue.click_to_add_description')}</span>}
                             </div>
                         )}
                     </div>
@@ -188,10 +190,10 @@ export default function IssueDetailPage() {
                     {/* Tabs Section */}
                     <Tabs defaultValue="activity" className="w-full">
                         <TabsList className="glass-card border border-slate-700/50 bg-slate-900/50 p-1">
-                            <TabsTrigger value="activity">Activity</TabsTrigger>
-                            <TabsTrigger value="comments">Comments ({comments.length})</TabsTrigger>
-                            <TabsTrigger value="subtasks">Subtasks</TabsTrigger>
-                            <TabsTrigger value="linked">Linked</TabsTrigger>
+                            <TabsTrigger value="activity">{t('common.activity')}</TabsTrigger>
+                            <TabsTrigger value="comments">{t('common.comments')} ({comments.length})</TabsTrigger>
+                            <TabsTrigger value="subtasks">{t('common.subtasks')}</TabsTrigger>
+                            <TabsTrigger value="linked">{t('common.linked_issues')}</TabsTrigger>
                         </TabsList>
 
                         <div className="mt-6">
@@ -215,10 +217,10 @@ export default function IssueDetailPage() {
                 <div className="space-y-6">
                     {/* Status & Type Card */}
                     <div className="glass-card p-5 rounded-xl border border-slate-700/50 space-y-4">
-                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Details</h3>
+                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">{t('common.details')}</h3>
 
                         <div className="space-y-1">
-                            <label className="text-xs text-slate-500">Status</label>
+                            <label className="text-xs text-slate-500">{t('common.status')}</label>
                             <select
                                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
                                 value={editValues.status}
@@ -233,14 +235,14 @@ export default function IssueDetailPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1">
-                                <label className="text-xs text-slate-500">Type</label>
+                                <label className="text-xs text-slate-500">{t('common.type')}</label>
                                 <div className={`flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 ${getTypeColor(issue.type)} bg-opacity-10 text-white capitalize`}>
                                     {getTypeIcon(issue.type)}
                                     <span>{issue.type}</span>
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <label className="text-xs text-slate-500">Priority</label>
+                                <label className="text-xs text-slate-500">{t('common.priority')}</label>
                                 <select
                                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none capitalize"
                                     value={editValues.priority}
@@ -257,10 +259,10 @@ export default function IssueDetailPage() {
 
                     {/* People Card */}
                     <div className="glass-card p-5 rounded-xl border border-slate-700/50 space-y-4">
-                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">People</h3>
+                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">{t('common.people')}</h3>
 
                         <div className="space-y-1">
-                            <label className="text-xs text-slate-500">Assignee</label>
+                            <label className="text-xs text-slate-500">{t('common.assignee')}</label>
                             <UserSelector
                                 selectedUserId={editValues.assigneeId}
                                 onSelect={(id) => {
@@ -271,7 +273,7 @@ export default function IssueDetailPage() {
                         </div>
 
                         <div className="pt-2">
-                            <label className="text-xs text-slate-500 block mb-1">Reporter</label>
+                            <label className="text-xs text-slate-500 block mb-1">{t('common.reporter')}</label>
                             <div className="flex items-center gap-2 text-sm text-white bg-slate-900 p-2 rounded-lg border border-slate-700">
                                 <div className="w-6 h-6 rounded-full bg-cyan-500/20 flex items-center justify-center text-xs text-cyan-400 font-bold">
                                     {issue.reporter?.firstName?.[0]}
@@ -283,21 +285,22 @@ export default function IssueDetailPage() {
 
                     {/* Planning Card */}
                     <div className="glass-card p-5 rounded-xl border border-slate-700/50 space-y-4">
-                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Planning</h3>
+                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">{t('common.planning')}</h3>
 
                         <div className="space-y-1">
-                            <label className="text-xs text-slate-500">Story Points</label>
+                            <label className="text-xs text-slate-500">{t('common.story_points')}</label>
                             <input
                                 type="number"
                                 className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:border-cyan-500 outline-none"
                                 value={editValues.storyPoints || ''}
                                 onChange={(e) => setEditValues({ ...editValues, storyPoints: e.target.value ? parseInt(e.target.value) : undefined })}
                                 onBlur={() => handleUpdate("storyPoints", editValues.storyPoints)}
+                                placeholder={t('common.estimate_effort')}
                             />
                         </div>
 
                         <div className="space-y-1 pt-2">
-                            <label className="text-xs text-slate-500">Labels</label>
+                            <label className="text-xs text-slate-500">{t('common.labels')}</label>
                             <LabelManager
                                 issueId={issue.id}
                                 projectId={projectId!}
@@ -309,7 +312,7 @@ export default function IssueDetailPage() {
 
                     {/* Time Tracking */}
                     <div className="glass-card p-5 rounded-xl border border-slate-700/50">
-                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">Tracking</h3>
+                        <h3 className="text-sm font-semibold text-slate-400 uppercase tracking-wider mb-4">{t('common.tracking')}</h3>
                         <TimeTracker issueId={issue.id} />
                     </div>
                 </div>

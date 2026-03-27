@@ -21,6 +21,8 @@ import { format, differenceInDays, addDays, parseISO } from 'date-fns'
 import { getInitials, cn } from '@/lib/utils'
 import { useToast } from '@/hooks/use-toast'
 import IssueDetailModal from '@/components/IssueDetailModal'
+import { CreateSprintModal } from '@/components/sprints/CreateSprintModal'
+import { CompleteSprintModal } from '@/components/sprints/CompleteSprintModal'
 import type { Issue, Sprint } from '@/types'
 
 // Theme Colors
@@ -930,127 +932,38 @@ export default function SprintManagementPage() {
 
       {/* Modals will be added here (Create, Edit, Complete) - reusing simplified structure */}
       {/* Create Sprint Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="w-full max-w-md glass-card rounded-2xl animate-scale-in p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Create Sprint</h3>
-            <div className="space-y-4">
-              <Input
-                placeholder="Sprint Name"
-                value={newSprint.name}
-                onChange={(e) => setNewSprint({ ...newSprint, name: e.target.value })}
-                className="bg-slate-900/50 border-slate-700"
-              />
-              <Input
-                placeholder="Goal"
-                value={newSprint.goal}
-                onChange={(e) => setNewSprint({ ...newSprint, goal: e.target.value })}
-                className="bg-slate-900/50 border-slate-700"
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  type="date"
-                  value={newSprint.startDate}
-                  onChange={(e) => setNewSprint({ ...newSprint, startDate: e.target.value })}
-                  className="bg-slate-900/50 border-slate-700"
-                />
-                <Input
-                  type="date"
-                  value={newSprint.endDate}
-                  onChange={(e) => setNewSprint({ ...newSprint, endDate: e.target.value })}
-                  className="bg-slate-900/50 border-slate-700"
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <Button onClick={handleCreateSprint} className="flex-1 btn-neon">Create</Button>
-                <Button variant="outline" onClick={() => setShowCreateModal(false)} className="flex-1 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">Cancel</Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateSprintModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        formData={newSprint}
+        onChange={setNewSprint}
+        onSubmit={handleCreateSprint}
+        isLoading={isLoading}
+      />
 
       {/* Edit Sprint Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="w-full max-w-md glass-card rounded-2xl animate-scale-in p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Edit Sprint</h3>
-            <div className="space-y-4">
-              <Input
-                placeholder="Sprint Name"
-                value={newSprint.name}
-                onChange={(e) => setNewSprint({ ...newSprint, name: e.target.value })}
-                className="bg-slate-900/50 border-slate-700"
-              />
-              <Input
-                placeholder="Goal"
-                value={newSprint.goal}
-                onChange={(e) => setNewSprint({ ...newSprint, goal: e.target.value })}
-                className="bg-slate-900/50 border-slate-700"
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <Input
-                  type="date"
-                  value={newSprint.startDate}
-                  onChange={(e) => setNewSprint({ ...newSprint, startDate: e.target.value })}
-                  className="bg-slate-900/50 border-slate-700"
-                />
-                <Input
-                  type="date"
-                  value={newSprint.endDate}
-                  onChange={(e) => setNewSprint({ ...newSprint, endDate: e.target.value })}
-                  className="bg-slate-900/50 border-slate-700"
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <Button onClick={handleUpdateSprint} className="flex-1 btn-neon">Update</Button>
-                <Button variant="outline" onClick={() => setShowEditModal(false)} className="flex-1 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">Cancel</Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CreateSprintModal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        formData={newSprint}
+        onChange={setNewSprint}
+        onSubmit={handleUpdateSprint}
+        isLoading={isLoading}
+        mode="edit"
+      />
 
       {/* Complete Sprint Modal */}
-      {showCompleteModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="w-full max-w-md glass-card rounded-2xl animate-scale-in p-6">
-            <h3 className="text-xl font-bold text-white mb-4">Complete Sprint: {selectedSprint?.name}</h3>
-
-            <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700">
-                <p className="text-sm text-slate-300 flex justify-between">
-                  <span>Completed Issues:</span>
-                  <span className="font-bold text-emerald-400">{sprintMetrics?.completedPoints} pts</span>
-                </p>
-                <p className="text-sm text-slate-300 flex justify-between mt-2">
-                  <span>Incomplete Issues:</span>
-                  <span className="font-bold text-amber-400">{sprintMetrics?.remainingPoints} pts</span>
-                </p>
-              </div>
-
-              {(sprintMetrics?.remainingPoints ?? 0) > 0 && (
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Move incomplete issues to:</label>
-                  <select
-                    className="w-full h-10 rounded-xl bg-slate-900/50 border border-slate-700 px-3 text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                    value={incompleteIssueAction}
-                    onChange={(e) => setIncompleteIssueAction(e.target.value as any)}
-                  >
-                    <option value="backlog">Backlog</option>
-                    <option value="next">New Sprint</option>
-                  </select>
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-4">
-                <Button onClick={handleCompleteSprint} className="flex-1 btn-neon">Complete</Button>
-                <Button variant="outline" onClick={() => setShowCompleteModal(false)} className="flex-1 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800">Cancel</Button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <CompleteSprintModal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        sprintName={selectedSprint?.name || ''}
+        completedPoints={sprintMetrics?.completedPoints || 0}
+        remainingPoints={sprintMetrics?.remainingPoints || 0}
+        incompleteIssueAction={incompleteIssueAction}
+        onIncompleteIssueActionChange={setIncompleteIssueAction}
+        onComplete={handleCompleteSprint}
+        isLoading={isLoading}
+      />
 
       {/* Issue Detail Modal */}
       {selectedIssue && (

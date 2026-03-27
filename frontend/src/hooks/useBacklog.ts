@@ -26,7 +26,12 @@ export function useBacklog() {
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedSprints, setExpandedSprints] = useState<string[]>([])
   const [showCreateSprint, setShowCreateSprint] = useState(false)
-  const [newSprintName, setNewSprintName] = useState('')
+  const [sprintFormData, setSprintFormData] = useState({
+    name: '',
+    goal: '',
+    startDate: '',
+    endDate: ''
+  })
   const [showCreateIssueModal, setShowCreateIssueModal] = useState(false)
   const [formData, setFormData] = useState<Partial<CreateIssueInput>>(INITIAL_FORM)
   const [formError, setFormError] = useState<string | null>(null)
@@ -148,11 +153,22 @@ export function useBacklog() {
   }
 
   const handleCreateSprint = async () => {
-    if (!projectId || !newSprintName.trim()) return
+    if (!projectId || !sprintFormData.name.trim()) return
     try {
-      await createSprint({ projectId, name: newSprintName })
+      await createSprint({ 
+        projectId, 
+        name: sprintFormData.name,
+        goal: sprintFormData.goal,
+        startDate: sprintFormData.startDate || undefined,
+        endDate: sprintFormData.endDate || undefined
+      })
       toast({ title: 'Sprint Created', description: 'New sprint has been created' })
-      setNewSprintName('')
+      setSprintFormData({
+        name: '',
+        goal: '',
+        startDate: '',
+        endDate: ''
+      })
       setShowCreateSprint(false)
     } catch {
       toast({ title: 'Error', description: 'Failed to create sprint' })
@@ -214,7 +230,7 @@ export function useBacklog() {
     searchQuery, setSearchQuery,
     expandedSprints, toggleSprint,
     showCreateSprint, setShowCreateSprint,
-    newSprintName, setNewSprintName,
+    sprintFormData, setSprintFormData,
     showCreateIssueModal, openCreateIssueModal, closeCreateIssueModal,
     formData, setFormData,
     formError,

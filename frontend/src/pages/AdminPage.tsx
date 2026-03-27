@@ -12,6 +12,9 @@ import { useAuthStore } from '@/store/authStore'
 import { useToast } from '@/hooks/use-toast'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import RoleBadge from '@/components/common/RoleBadge'
+import StatusBadge from '@/components/common/StatusBadge'
+import StatCard from '@/components/common/StatCard'
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -20,24 +23,13 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import CreateUserModal from '@/components/modals/CreateUserModal'
+import EditUserModal from '@/components/modals/EditUserModal'
+import ResetPasswordModal from '@/components/modals/ResetPasswordModal'
+import CreateProjectModal from '@/components/modals/CreateProjectModal'
+import EditProjectModal from '@/components/modals/EditProjectModal'
 
-const roleColors = {
-    admin: 'from-purple-500 to-indigo-600',
-    manager: 'from-blue-500 to-cyan-500',
-    user: 'from-slate-500 to-slate-600',
-}
 
-const roleIcons = {
-    admin: Crown,
-    manager: ShieldCheck,
-    user: Shield,
-}
-
-const roleBadgeColors = {
-    admin: 'bg-purple-500/20 text-purple-400 border-purple-500/30',
-    manager: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-    user: 'bg-slate-700/50 text-slate-400 border-slate-600',
-}
 
 export default function AdminPage() {
     const { user: currentUser } = useAuthStore()
@@ -54,47 +46,16 @@ export default function AdminPage() {
 
     const [projectSearchQuery, setProjectSearchQuery] = useState('')
 
-    // Reset Password state
-    const [showResetPasswordModal, setShowResetPasswordModal] = useState<string | null>(null)
-    const [newPassword, setNewPassword] = useState('')
-
-    // Edit User state
-    const [editingUser, setEditingUser] = useState<User | null>(null)
-    const [editForm, setEditForm] = useState<UpdateUserInput>({
-        firstName: '',
-        lastName: '',
-        email: '',
-    })
-
-    // Create user form state
-    const [newUser, setNewUser] = useState<CreateUserInput>({
-        email: '',
-        password: '',
-        firstName: '',
-        lastName: '',
-        role: 'user',
-    })
-
-    // Edit Project state
-    const [editingProject, setEditingProject] = useState<Project | null>(null)
-    const [editProjectForm, setEditProjectForm] = useState<UpdateProjectInput>({
-        name: '',
-        key: '',
-        description: '',
-        ownerId: '',
-    })
-
     // Create Project state
     const [showCreateProjectModal, setShowCreateProjectModal] = useState(false)
-    const [newProject, setNewProject] = useState<CreateProjectInput>({
-        name: '',
-        key: '',
-        description: '',
-        ownerId: '',
-    })
 
     // Project Stats
     const [projectStats, setProjectStats] = useState<{ totalProjects: number; totalMembers?: number } | null>(null)
+
+    // Editing states
+    const [editingUser, setEditingUser] = useState<User | null>(null)
+    const [editingProject, setEditingProject] = useState<Project | null>(null)
+    const [showResetPasswordModal, setShowResetPasswordModal] = useState<string | null>(null)
 
     useEffect(() => {
         fetchData()
@@ -123,12 +84,11 @@ export default function AdminPage() {
         }
     }
 
-    const handleCreateUser = async () => {
+    const handleCreateUser = async (data: CreateUserInput) => {
         try {
-            const user = await adminService.createUser(newUser)
+            const user = await adminService.createUser(data)
             setUsers([...users, user])
             setShowCreateModal(false)
-            setNewUser({ email: '', password: '', firstName: '', lastName: '', role: 'user' })
             toast({
                 title: 'Success',
                 description: 'User created successfully',
@@ -214,13 +174,12 @@ export default function AdminPage() {
         }
     }
 
-    const handleResetPassword = async () => {
-        if (!showResetPasswordModal || !newPassword) return
+    const handleResetPassword = async (password: string) => {
+        if (!showResetPasswordModal || !password) return
 
         try {
-            await adminService.resetUserPassword(showResetPasswordModal, newPassword)
+            await adminService.resetUserPassword(showResetPasswordModal, password)
             setShowResetPasswordModal(null)
-            setNewPassword('')
             toast({
                 title: 'Success',
                 description: 'Password reset successfully',
@@ -235,19 +194,13 @@ export default function AdminPage() {
 
     const openEditUser = (user: User) => {
         setEditingUser(user)
-        setEditForm({
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-        })
-
     }
 
-    const handleUpdateUser = async () => {
+    const handleUpdateUser = async (data: UpdateUserInput) => {
         if (!editingUser) return
 
         try {
-            const updatedUser = await adminService.updateUser(editingUser.id, editForm)
+            const updatedUser = await adminService.updateUser(editingUser.id, data)
             setUsers(users.map(u => u.id === editingUser.id ? updatedUser : u))
             setEditingUser(null)
             toast({
@@ -262,12 +215,10 @@ export default function AdminPage() {
         }
     }
 
-    const handleCreateProject = async () => {
+    const handleCreateProject = async (data: CreateProjectInput) => {
         try {
-            await adminService.createProject(newProject)
-            setProjects([...projects])
+            await adminService.createProject(data)
             setShowCreateProjectModal(false)
-            setNewProject({ name: '', key: '', description: '', ownerId: '' })
             toast({
                 title: 'Success',
                 description: 'Project created successfully',
@@ -283,19 +234,13 @@ export default function AdminPage() {
 
     const openEditProject = (project: Project) => {
         setEditingProject(project)
-        setEditProjectForm({
-            name: project.name,
-            key: project.key,
-            description: project.description || '',
-            ownerId: project.ownerId,
-        })
     }
 
-    const handleUpdateProject = async () => {
+    const handleUpdateProject = async (data: UpdateProjectInput) => {
         if (!editingProject) return
 
         try {
-            const updatedProject = await adminService.updateProject(editingProject.id, editProjectForm)
+            const updatedProject = await adminService.updateProject(editingProject.id, data)
             setProjects(projects.map(p => p.id === editingProject.id ? updatedProject : p))
             setEditingProject(null)
             toast({
@@ -347,7 +292,8 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="min-h-screen bg-transparent animate-fade-in pb-12">
+        <>
+            <div className="min-h-screen bg-transparent animate-fade-in pb-12">
             {/* Header */}
             <div className="sidebar-glass sticky top-0 z-20 border-b border-white/5">
                 <div className="max-w-7xl mx-auto px-6 py-6">
@@ -392,73 +338,10 @@ export default function AdminPage() {
                         {/* Stats Cards */}
                         {stats && (
                             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="glass-card rounded-2xl p-6 border border-slate-700/50 hover:border-cyan-500/30 transition-all group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20 group-hover:scale-110 transition-transform">
-                                            <Users className="w-7 h-7 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500 font-medium">Total Users</p>
-                                            <p className="text-3xl font-bold text-white shadow-cyan-500/50">{stats.totalUsers}</p>
-                                        </div>
-                                    </div>
-                                </motion.div>
-
-                                {/* More stats cards... simplified for brevity but following same pattern */}
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.1 }}
-                                    className="glass-card rounded-2xl p-6 border border-slate-700/50 hover:border-emerald-500/30 transition-all group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-transform">
-                                            <UserCheck className="w-7 h-7 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500 font-medium">Active Users</p>
-                                            <p className="text-3xl font-bold text-white">{stats.activeUsers}</p>
-                                        </div>
-                                    </div>
-                                </motion.div>
-
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.2 }}
-                                    className="glass-card rounded-2xl p-6 border border-slate-700/50 hover:border-purple-500/30 transition-all group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-500/20 group-hover:scale-110 transition-transform">
-                                            <Crown className="w-7 h-7 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500 font-medium">Admins</p>
-                                            <p className="text-3xl font-bold text-white">{stats.byRole.admins}</p>
-                                        </div>
-                                    </div>
-                                </motion.div>
-
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.3 }}
-                                    className="glass-card rounded-2xl p-6 border border-slate-700/50 hover:border-amber-500/30 transition-all group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20 group-hover:scale-110 transition-transform">
-                                            <ShieldCheck className="w-7 h-7 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500 font-medium">Managers</p>
-                                            <p className="text-3xl font-bold text-white">{stats.byRole.managers}</p>
-                                        </div>
-                                    </div>
-                                </motion.div>
+                                <StatCard title="Total Users" value={stats.totalUsers} icon={Users} color="blue" />
+                                <StatCard title="Active Users" value={stats.activeUsers} icon={UserCheck} color="emerald" delay={0.1} />
+                                <StatCard title="Admins" value={stats.byRole.admins} icon={Crown} color="purple" delay={0.2} />
+                                <StatCard title="Managers" value={stats.byRole.managers} icon={ShieldCheck} color="amber" delay={0.3} />
                             </div>
                         )}
 
@@ -545,7 +428,6 @@ export default function AdminPage() {
                                         ) : (
                                             <AnimatePresence>
                                                 {filteredUsers.map((user, index) => {
-                                                    const RoleIcon = roleIcons[user.role as keyof typeof roleIcons] || Shield
                                                     return (
                                                         <motion.tr
                                                             key={user.id}
@@ -556,7 +438,7 @@ export default function AdminPage() {
                                                         >
                                                             <td className="py-4 px-6">
                                                                 <div className="flex items-center gap-3">
-                                                                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${roleColors[user.role as keyof typeof roleColors] || roleColors.user} flex items-center justify-center text-white font-semibold shadow-lg`}>
+                                                                    <div className={`w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center text-white font-semibold shadow-lg`}>
                                                                         {user.firstName[0]?.toUpperCase()}
                                                                     </div>
                                                                     <span className="font-medium text-white group-hover:text-cyan-400 transition-colors">
@@ -571,19 +453,10 @@ export default function AdminPage() {
                                                                 </div>
                                                             </td>
                                                             <td className="py-4 px-6">
-                                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${roleBadgeColors[user.role as keyof typeof roleBadgeColors] || roleBadgeColors.user}`}>
-                                                                    <RoleIcon className="w-3 h-3" />
-                                                                    {user.role.toUpperCase()}
-                                                                </span>
+                                                                <RoleBadge role={user.role} />
                                                             </td>
                                                             <td className="py-4 px-6">
-                                                                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border ${user.isActive
-                                                                    ? 'berald-500/20 text-emerald-400 border-emerald-500/30'
-                                                                    : 'bd-500/20 text-red-400 border-red-500/30'
-                                                                    }`}>
-                                                                    <span className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-                                                                    {user.isActive ? 'Active' : 'Inactive'}
-                                                                </span>
+                                                                <StatusBadge isActive={user.isActive} />
                                                             </td>
                                                             <td className="py-4 px-6 text-slate-500">
                                                                 <div className="flex items-center gap-2 text-xs">
@@ -669,37 +542,8 @@ export default function AdminPage() {
                     <>
                         {projectStats && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="glass-card rounded-2xl p-6 border border-slate-700/50 hover:border-blue-500/30 transition-all group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
-                                            <FolderPlus className="w-7 h-7 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500 font-medium">Total Projects</p>
-                                            <p className="text-3xl font-bold text-white">{projectStats.totalProjects}</p>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.1 }}
-                                    className="glass-card rounded-2xl p-6 border border-slate-700/50 hover:border-emerald-500/30 transition-all group"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
-                                            <Users className="w-7 h-7 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500 font-medium">Total Members</p>
-                                            <p className="text-3xl font-bold text-white">{projectStats.totalMembers || '-'}</p>
-                                        </div>
-                                    </div>
-                                </motion.div>
+                                <StatCard title="Total Projects" value={projectStats.totalProjects} icon={FolderPlus} color="blue" />
+                                <StatCard title="Total Members" value={projectStats.totalMembers || '-'} icon={Users} color="emerald" delay={0.1} />
                             </div>
                         )}
 
@@ -818,116 +662,39 @@ export default function AdminPage() {
                     </>
                 )}
             </div>
-
-            {/* Modals placed here for Create User, Edit User, Reset Password, etc. */}
-            {/* Same logic but using glass-card styles for modal content... */}
-            {showCreateModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in">
-                        <h2 className="text-xl font-bold text-white mb-4">Create New User</h2>
-                        <div className="space-y-4">
-                            <Input placeholder="First Name" value={newUser.firstName} onChange={e => setNewUser({ ...newUser, firstName: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <Input placeholder="Last Name" value={newUser.lastName} onChange={e => setNewUser({ ...newUser, lastName: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <Input placeholder="Email" value={newUser.email} onChange={e => setNewUser({ ...newUser, email: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <Input placeholder="Password" type="password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <select
-                                value={newUser.role}
-                                onChange={e => setNewUser({ ...newUser, role: e.target.value as any })}
-                                className="w-full h-10 rounded-md bg-slate-800 border border-slate-700 text-white px-3 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            >
-                                <option value="user">User</option>
-                                <option value="manager">Manager</option>
-                                <option value="admin">Admin</option>
-                            </select>
-                            <div className="flex gap-2 pt-2">
-                                <Button className="flex-1 btn-neon" onClick={handleCreateUser}>Create</Button>
-                                <Button variant="outline" className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setShowCreateModal(false)}>Cancel</Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Reset Password Modal */}
-            {showResetPasswordModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in">
-                        <h2 className="text-xl font-bold text-white mb-4">Reset Password</h2>
-                        <div className="space-y-4">
-                            <Input
-                                placeholder="New Password"
-                                type="password"
-                                value={newPassword}
-                                onChange={e => setNewPassword(e.target.value)}
-                                className="bg-slate-800 border-slate-700"
-                            />
-                            <div className="flex gap-2 pt-2">
-                                <Button className="flex-1 btn-neon" onClick={handleResetPassword}>Reset Password</Button>
-                                <Button variant="outline" className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => {
-                                    setShowResetPasswordModal(null)
-                                    setNewPassword('')
-                                }}>Cancel</Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Edit User Modal */}
-            {editingUser && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in">
-                        <h2 className="text-xl font-bold text-white mb-4">Edit User</h2>
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <Input placeholder="First Name" value={editForm.firstName} onChange={e => setEditForm({ ...editForm, firstName: e.target.value })} className="bg-slate-800 border-slate-700" />
-                                <Input placeholder="Last Name" value={editForm.lastName} onChange={e => setEditForm({ ...editForm, lastName: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            </div>
-                            <Input placeholder="Email" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <div className="flex gap-2 pt-2">
-                                <Button className="flex-1 btn-neon" onClick={handleUpdateUser}>Save Changes</Button>
-                                <Button variant="outline" className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setEditingUser(null)}>Cancel</Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Edit Project Modal */}
-            {editingProject && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in">
-                        <h2 className="text-xl font-bold text-white mb-4">Edit Project</h2>
-                        <div className="space-y-4">
-                            <Input placeholder="Project Name" value={editProjectForm.name} onChange={e => setEditProjectForm({ ...editProjectForm, name: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <Input placeholder="Project Key" value={editProjectForm.key} onChange={e => setEditProjectForm({ ...editProjectForm, key: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <Input placeholder="Description" value={editProjectForm.description} onChange={e => setEditProjectForm({ ...editProjectForm, description: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <div className="flex gap-2 pt-2">
-                                <Button className="flex-1 btn-neon" onClick={handleUpdateProject}>Save Changes</Button>
-                                <Button variant="outline" className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setEditingProject(null)}>Cancel</Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Create Project Modal */}
-            {showCreateProjectModal && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-                    <div className="bg-slate-900 border border-slate-700 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-scale-in">
-                        <h2 className="text-xl font-bold text-white mb-4">Create New Project</h2>
-                        <div className="space-y-4">
-                            <Input placeholder="Project Name" value={newProject.name} onChange={e => setNewProject({ ...newProject, name: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <Input placeholder="Project Key" value={newProject.key} onChange={e => setNewProject({ ...newProject, key: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <Input placeholder="Description" value={newProject.description} onChange={e => setNewProject({ ...newProject, description: e.target.value })} className="bg-slate-800 border-slate-700" />
-                            <div className="flex gap-2 pt-2">
-                                <Button variant="neon" className="flex-1" onClick={handleCreateProject}>Create</Button>
-                                <Button variant="outline" className="flex-1 border-slate-700 text-slate-300 hover:bg-slate-800" onClick={() => setShowCreateProjectModal(false)}>Cancel</Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
-    )
+
+        <CreateUserModal
+            isOpen={showCreateModal}
+            onClose={() => setShowCreateModal(false)}
+            onSubmit={handleCreateUser}
+        />
+
+        <ResetPasswordModal
+            isOpen={!!showResetPasswordModal}
+            onClose={() => setShowResetPasswordModal(null)}
+            onSubmit={handleResetPassword}
+        />
+
+        <EditUserModal
+            isOpen={!!editingUser}
+            user={editingUser}
+            onClose={() => setEditingUser(null)}
+            onSubmit={handleUpdateUser}
+        />
+
+        <EditProjectModal
+            isOpen={!!editingProject}
+            project={editingProject}
+            onClose={() => setEditingProject(null)}
+            onSubmit={handleUpdateProject}
+        />
+
+        <CreateProjectModal
+            isOpen={showCreateProjectModal}
+            onClose={() => setShowCreateProjectModal(false)}
+            onSubmit={handleCreateProject}
+        />
+    </>
+  )
 }

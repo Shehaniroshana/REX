@@ -63,7 +63,8 @@ export default function BoardPage() {
 
   // ── Main board ───────────────────────────────────────────────────────
   return (
-    <div className="space-y-6 animate-fade-in p-6 pb-20">
+    <>
+      <div className="space-y-6 animate-fade-in p-6 pb-20">
       {/* Header */}
       <div className="space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -147,24 +148,24 @@ export default function BoardPage() {
         </div>
       </DragDropContext>
 
-      {/* Issue Detail Modal */}
-      {board.selectedIssue && (
-        <IssueDetailModal
-          issue={board.selectedIssue}
-          onClose={() => board.setSelectedIssue(null)}
-          onUpdate={() => board.fetchIssues(board.projectId!)}
-        />
-      )}
-
-      {/* Create Issue Modal */}
-      <CreateIssueModal
-        isOpen={board.showCreateModal}
-        onClose={board.closeCreateModal}
-        formData={board.formData}
-        onChange={board.setFormData}
-        onSubmit={board.handleCreateIssue}
-        error={board.formError}
-      />
     </div>
-  )
+    {/* Issue Detail Modal */}
+    {board.selectedIssue && (
+      <IssueDetailModal
+        issue={board.selectedIssue}
+        onClose={() => board.setSelectedIssue(null)}
+        onUpdate={() => board.fetchIssues(board.projectId!)}
+      />
+    )}
+
+    <CreateIssueModal
+      isOpen={board.showCreateModal}
+      onClose={board.closeCreateModal}
+      formData={board.formData}
+      onChange={board.setFormData}
+      onSubmit={board.handleCreateIssue}
+      error={board.formError}
+    />
+  </>
+)
 }

@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
   Plus, Search, CheckCircle2, Circle,
-  Target, Zap, Play, ChevronDown, ChevronRight,
+  Target, Play, ChevronDown, ChevronRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBacklog } from '@/hooks/useBacklog'
 import { IssueRow } from '@/components/issues/IssueRow'
 import { CreateIssueModal } from '@/components/issues/CreateIssueModal'
+import { CreateSprintModal } from '@/components/sprints/CreateSprintModal'
 import IssueDetailModal from '@/components/IssueDetailModal'
 import type { Sprint } from '@/types'
 
@@ -20,7 +21,8 @@ export default function BacklogPage() {
 
   return (
     <DragDropContext onDragEnd={bl.onDragEnd}>
-      <div className="space-y-6 animate-fade-in pb-10">
+      <>
+        <div className="space-y-6 animate-fade-in pb-10">
 
         {/* Header */}
         <div className="glass-card p-6 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -211,72 +213,40 @@ export default function BacklogPage() {
           </Droppable>
         </div>
 
-        {/* Create Sprint Modal */}
-        {bl.showCreateSprint && (
-          <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-            <div className="w-full max-w-md glass-card rounded-2xl animate-scale-in shadow-2xl p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center shadow-[0_0_15px_rgba(168,85,247,0.3)]">
-                  <Zap className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-white">Create Sprint</h3>
-                  <p className="text-sm text-slate-400">Plan your next iteration</p>
-                </div>
-              </div>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-300">Sprint Name</label>
-                  <Input
-                    placeholder="e.g., Sprint 1"
-                    value={bl.newSprintName}
-                    onChange={(e) => bl.setNewSprintName(e.target.value)}
-                    autoFocus
-                    className="bg-slate-900/50 border-slate-700"
-                  />
-                </div>
-                <div className="flex gap-3 pt-2">
-                  <Button
-                    onClick={bl.handleCreateSprint}
-                    className="flex-1 btn-neon"
-                    disabled={!bl.newSprintName.trim() || bl.sprintLoading}
-                  >
-                    Create Sprint
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => bl.setShowCreateSprint(false)}
-                    className="flex-1 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800"
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+    </div>
+      <CreateSprintModal
+        isOpen={bl.showCreateSprint}
+        onClose={() => bl.setShowCreateSprint(false)}
+        formData={bl.sprintFormData}
+        onChange={bl.setSprintFormData}
+        onSubmit={bl.handleCreateSprint}
+        isLoading={bl.sprintLoading}
+      />
 
-        {/* Issue Detail Modal */}
-        {bl.selectedIssue && (
-          <IssueDetailModal
-            issue={bl.selectedIssue}
-            onClose={() => {
-              bl.setSelectedIssue(null)
-              if (bl.projectId) bl.fetchIssues(bl.projectId)
-            }}
-          />
-        )}
-
-        {/* Create Issue Modal */}
-        <CreateIssueModal
-          isOpen={bl.showCreateIssueModal}
-          onClose={bl.closeCreateIssueModal}
-          formData={bl.formData}
-          onChange={bl.setFormData}
-          onSubmit={bl.handleCreateIssue}
-          error={bl.formError}
+      {/* Issue Detail Modal */}
+      {bl.selectedIssue && (
+        <IssueDetailModal
+          issue={bl.selectedIssue}
+          onClose={() => {
+            bl.setSelectedIssue(null)
+            if (bl.projectId) bl.fetchIssues(bl.projectId)
+          }}
+          onUpdate={() => {
+             if (bl.projectId) bl.fetchIssues(bl.projectId)
+          }}
         />
-      </div>
-    </DragDropContext>
-  )
+      )}
+
+      <CreateIssueModal
+        isOpen={bl.showCreateIssueModal}
+        onClose={bl.closeCreateIssueModal}
+        formData={bl.formData}
+        onChange={bl.setFormData}
+        onSubmit={bl.handleCreateIssue}
+        error={bl.formError}
+      />
+   
+    </>
+  </DragDropContext>
+)
 }

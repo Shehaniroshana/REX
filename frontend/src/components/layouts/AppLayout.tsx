@@ -7,7 +7,7 @@ import { getInitials } from '@/lib/utils'
 import {
   LogOut, LayoutDashboard,
   ChevronDown,
-  List, Zap, Shield, TrendingUp, Settings, Milestone
+  List, Zap, Shield, TrendingUp, Settings
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { wsService } from '@/services/websocketService'
@@ -171,9 +171,6 @@ export default function AppLayout() {
                 </Link>
                 <Link to={`/projects/${projectId}/reports`} className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.includes('/reports') ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
                   <TrendingUp className="w-4 h-4" /> Reports
-                </Link>
-                <Link to={`/projects/${projectId}/roadmap`} className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.includes('/roadmap') ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
-                  <Milestone className="w-4 h-4" /> Roadmap
                 </Link>
                 <Link to={`/projects/${projectId}/settings`} className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.includes('/settings') ? 'bg-slate-500/20 text-slate-300' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
                   <Settings className="w-4 h-4" /> Settings

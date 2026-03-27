@@ -11,13 +11,16 @@ import {
   ArrowLeft, Activity, Layers, Crown, Clock, TrendingUp,
   Users, Target, Flame, BarChart3, PieChartIcon, Timer,
   CheckCircle2, AlertTriangle, Calendar, GitBranch, Sparkles,
-  Trophy, Rocket, Brain, ArrowUpRight, ArrowDownRight,
-  RefreshCw, Zap
+  Trophy, Rocket, Brain, RefreshCw, Zap
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { format, parseISO } from 'date-fns'
-import { reportService, ComprehensiveStats, TeamMemberStats } from '@/services/reportService'
+import { reportService, ComprehensiveStats } from '@/services/reportService'
+import CustomTooltip from '@/components/analytics/CustomTooltip'
+import TeamMemberCard from '@/components/analytics/TeamMemberCard'
+import AnalyticsCard from '@/components/analytics/AnalyticsCard'
+import ProgressRing from '@/components/common/ProgressRing'
+import SectionHeader from '@/components/common/SectionHeader'
 
 // Neon Theme Configuration
 const THEME = {
@@ -58,240 +61,6 @@ const PRIORITY_COLORS: Record<string, string> = {
   low: THEME.cyan,
   lowest: THEME.slate,
 }
-
-// Custom Tooltip Component
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-slate-950/95 border border-slate-700/50 p-4 rounded-xl shadow-[0_0_30px_rgba(0,0,0,0.5)] backdrop-blur-xl">
-        <p className="text-slate-200 font-bold mb-2 border-b border-slate-700/50 pb-2">{label || payload[0].name}</p>
-        {payload.map((entry: any, index: number) => (
-          <div key={index} className="flex items-center gap-3 text-sm py-1">
-            <div
-              className="w-3 h-3 rounded-full shadow-[0_0_10px_currentColor]"
-              style={{ backgroundColor: entry.color || entry.fill }}
-            />
-            <span className="text-slate-400 capitalize">{entry.name}:</span>
-            <span className="text-white font-mono font-bold">
-              {typeof entry.value === 'number' && entry.value % 1 !== 0 ? entry.value.toFixed(1) : entry.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    )
-  }
-  return null
-}
-
-
-// Animated Counter Component
-const AnimatedCounter = ({ value, suffix = '', prefix = '' }: { value: number; suffix?: string; prefix?: string }) => {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    const duration = 1000;
-    const steps = 30;
-    const increment = value / steps;
-    let current = 0;
-
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= value) {
-        setCount(value);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(current));
-      }
-    }, duration / steps);
-
-    return () => clearInterval(timer);
-  }, [value]);
-
-  return <span>{prefix}{count.toLocaleString()}{suffix}</span>;
-};
-
-// Progress Ring Component
-const ProgressRing = ({ progress, size = 80, strokeWidth = 8, color = THEME.cyan }: {
-  progress: number;
-  size?: number;
-  strokeWidth?: number;
-  color?: string;
-}) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
-
-  return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke="rgba(255,255,255,0.1)"
-          strokeWidth={strokeWidth}
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          fill="none"
-          stroke={color}
-          strokeWidth={strokeWidth}
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-          style={{
-            filter: `drop-shadow(0 0 10px ${color})`,
-            transition: 'stroke-dashoffset 1s ease-out',
-          }}
-        />
-      </svg>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-xl font-bold text-white">{Math.round(progress)}%</span>
-      </div>
-    </div>
-  );
-};
-
-// Stat Card Component
-const StatCard = ({
-  label,
-  value,
-  icon: Icon,
-  color,
-  trend,
-  trendValue,
-  suffix = '',
-  delay = 0
-}: {
-  label: string;
-  value: number;
-  icon: any;
-  color: string;
-  trend?: 'up' | 'down' | 'neutral';
-  trendValue?: string;
-  suffix?: string;
-  delay?: number;
-}) => (
-  <div
-    className="glass-card p-5 rounded-2xl border border-slate-800/50 hover:border-slate-700/50 
-               transition-all duration-300 hover:translate-y-[-4px] hover:shadow-[0_20px_40px_rgba(0,0,0,0.3)]
-               animate-slide-up group"
-    style={{ animationDelay: `${delay}ms` }}
-  >
-    <div className="flex justify-between items-start mb-3">
-      <div
-        className="p-2.5 rounded-xl transition-all duration-300 group-hover:scale-110"
-        style={{
-          background: `linear-gradient(135deg, ${color}20 0%, ${color}10 100%)`,
-          boxShadow: `0 0 20px ${color}20`,
-        }}
-      >
-        <Icon className="w-5 h-5" style={{ color }} />
-      </div>
-      {trend && (
-        <div className={cn(
-          "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full",
-          trend === 'up' && "bg-emerald-500/20 text-emerald-400",
-          trend === 'down' && "bg-rose-500/20 text-rose-400",
-          trend === 'neutral' && "bg-slate-500/20 text-slate-400"
-        )}>
-          {trend === 'up' && <ArrowUpRight className="w-3 h-3" />}
-          {trend === 'down' && <ArrowDownRight className="w-3 h-3" />}
-          {trendValue}
-        </div>
-      )}
-    </div>
-    <p className="text-slate-500 text-xs uppercase tracking-wider font-semibold mb-1">{label}</p>
-    <h3 className="text-2xl font-bold text-white">
-      <AnimatedCounter value={value} suffix={suffix} />
-    </h3>
-  </div>
-);
-
-// Section Header Component
-const SectionHeader = ({ icon: Icon, title, subtitle, color }: {
-  icon: any;
-  title: string;
-  subtitle?: string;
-  color: string;
-}) => (
-  <div className="flex items-center gap-3 mb-6">
-    <div
-      className="p-2 rounded-lg"
-      style={{
-        background: `${color}20`,
-        boxShadow: `0 0 20px ${color}20`,
-      }}
-    >
-      <Icon className="w-5 h-5" style={{ color }} />
-    </div>
-    <div>
-      <h2 className="text-xl font-bold text-white">{title}</h2>
-      {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
-    </div>
-  </div>
-);
-
-// Team Member Card Component
-const TeamMemberCard = ({ member, rank }: { member: TeamMemberStats; rank: number }) => {
-  const completionRate = member.assignedIssues > 0
-    ? Math.round((member.completedIssues / member.assignedIssues) * 100)
-    : 0;
-
-  return (
-    <div className="glass-card p-4 rounded-xl border border-slate-800/50 hover:border-slate-700/50 transition-all duration-300 group hover:translate-y-[-2px]">
-      <div className="flex items-center gap-4">
-        {/* Rank Badge */}
-        <div className={cn(
-          "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
-          rank === 1 && "bg-amber-500/20 text-amber-400",
-          rank === 2 && "bg-slate-400/20 text-slate-300",
-          rank === 3 && "bg-orange-600/20 text-orange-400",
-          rank > 3 && "bg-slate-700/30 text-slate-500"
-        )}>
-          {rank <= 3 ? <Trophy className="w-4 h-4" /> : rank}
-        </div>
-
-        {/* Avatar */}
-        <Avatar className="h-10 w-10 border-2 border-slate-700">
-          <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-sm font-semibold">
-            {member.firstName?.[0]}{member.lastName?.[0]}
-          </AvatarFallback>
-        </Avatar>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-white truncate">
-            {member.firstName} {member.lastName}
-          </p>
-          <p className="text-xs text-slate-500 truncate">{member.email}</p>
-        </div>
-
-        {/* Stats */}
-        <div className="flex items-center gap-4 text-sm">
-          <div className="text-center">
-            <p className="text-lg font-bold text-emerald-400">{member.completedIssues}</p>
-            <p className="text-[10px] text-slate-500 uppercase">Done</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-blue-400">{member.inProgressCount}</p>
-            <p className="text-[10px] text-slate-500 uppercase">Active</p>
-          </div>
-          <div className="text-center">
-            <p className="text-lg font-bold text-purple-400">{member.completedPoints}</p>
-            <p className="text-[10px] text-slate-500 uppercase">Points</p>
-          </div>
-          <div className="hidden md:block">
-            <ProgressRing progress={completionRate} size={50} strokeWidth={5} />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 export default function ReportsPage() {
   const { projectId } = useParams<{ projectId: string }>()
@@ -387,7 +156,10 @@ export default function ReportsPage() {
 
   const weeklyVelocityData = useMemo(() => {
     if (!stats?.weeklyVelocity) return [];
-    return stats.weeklyVelocity;
+    return stats.weeklyVelocity.map(w => ({
+      ...w,
+      points: w.pointsCompleted
+    }));
   }, [stats]);
 
   const agingChartData = useMemo(() => {
@@ -481,14 +253,14 @@ export default function ReportsPage() {
 
       {/* Hero Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <StatCard
+        <AnalyticsCard
           label="Total Issues"
           value={stats.totalIssues}
           icon={Layers}
           color={THEME.cyan}
           delay={0}
         />
-        <StatCard
+        <AnalyticsCard
           label="Completed"
           value={stats.completedIssues}
           icon={CheckCircle2}
@@ -497,21 +269,21 @@ export default function ReportsPage() {
           trendValue={`${metrics?.completionRate.toFixed(0)}%`}
           delay={50}
         />
-        <StatCard
+        <AnalyticsCard
           label="In Progress"
-          value={stats.openIssues - stats.totalIssues + stats.completedIssues + stats.openIssues}
+          value={stats.openIssues}
           icon={Flame}
           color={THEME.blue}
           delay={100}
         />
-        <StatCard
+        <AnalyticsCard
           label="Story Points"
           value={stats.totalPoints}
           icon={Target}
           color={THEME.purple}
           delay={150}
         />
-        <StatCard
+        <AnalyticsCard
           label="Weekly Velocity"
           value={stats.recentResolved}
           icon={Rocket}
@@ -520,7 +292,7 @@ export default function ReportsPage() {
           trendValue={`${stats.recentResolved}/${stats.recentCreated}`}
           delay={200}
         />
-        <StatCard
+        <AnalyticsCard
           label="Avg Resolution"
           value={Math.round(metrics?.avgResolutionDays || 0)}
           icon={Timer}
@@ -831,9 +603,9 @@ export default function ReportsPage() {
                   })}
                 </div>
               ) : (
-                <div className="h-[280px] flex flex-col items-center justify-center text-slate-500">
-                  <Sparkles className="w-12 h-12 mb-4 opacity-30" />
-                  <p>No labels configured</p>
+                <div className="flex flex-col items-center justify-center h-full opacity-30">
+                  <Sparkles className="w-16 h-16 mb-4" />
+                  <p>No label data available</p>
                 </div>
               )}
             </div>
@@ -842,337 +614,273 @@ export default function ReportsPage() {
       )}
 
       {activeTab === 'team' && (
-        <>
-          {/* Team Leaderboard */}
-          <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
-            <SectionHeader
-              icon={Trophy}
-              title="Team Leaderboard"
-              subtitle="Performance rankings based on completed work"
-              color={THEME.amber}
-            />
-            <div className="space-y-3">
-              {stats.teamStats && stats.teamStats.length > 0 ? (
-                stats.teamStats.map((member, index) => (
-                  <TeamMemberCard key={member.userId} member={member} rank={index + 1} />
-                ))
-              ) : (
-                <div className="py-12 text-center text-slate-500">
-                  <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No team members found</p>
-                </div>
-              )}
-            </div>
+        <div className="space-y-6">
+          <SectionHeader
+            icon={Trophy}
+            title="Leaderboard"
+            subtitle="Top contributors by completed story points"
+            color={THEME.amber}
+          />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {stats.teamStats.sort((a, b) => b.completedPoints - a.completedPoints).map((member, index) => (
+              <TeamMemberCard key={member.email} member={member} rank={index + 1} />
+            ))}
           </div>
 
-          {/* Assignee Distribution Chart */}
           <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
-            <SectionHeader
-              icon={Users}
-              title="Workload Distribution"
-              subtitle="Issues assigned per team member"
-              color={THEME.cyan}
-            />
-            <div className="h-[350px]">
+            <SectionHeader icon={Users} title="Workload Distribution" color={THEME.blue} />
+            <div className="h-[350px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={stats.assigneeCounts?.filter(a => a.firstName).map(a => ({
-                    name: `${a.firstName} ${a.lastName?.[0] || ''}.`,
-                    issues: a.count,
-                  })) || []}
-                  margin={{ top: 20, right: 30, bottom: 60, left: 0 }}
-                >
-                  <defs>
-                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor={THEME.cyan} stopOpacity={1} />
-                      <stop offset="100%" stopColor={THEME.blue} stopOpacity={1} />
-                    </linearGradient>
-                  </defs>
+                <BarChart data={stats.teamStats.sort((a, b) => b.assignedIssues - a.assignedIssues)}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                   <XAxis
-                    dataKey="name"
+                    dataKey={(m) => `${m.firstName} ${m.lastName[0]}.`}
                     stroke={THEME.text}
                     tick={{ fontSize: 11 }}
-                    angle={-45}
-                    textAnchor="end"
                     tickLine={false}
-                    height={60}
                   />
                   <YAxis stroke={THEME.text} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="issues" name="Assigned Issues" fill="url(#barGradient)" radius={[8, 8, 0, 0]} />
+                  <Bar dataKey="completedIssues" name="Completed" fill={THEME.emerald} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="inProgressCount" name="In Progress" fill={THEME.blue} radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {activeTab === 'velocity' && (
-        <>
-          {/* Weekly Velocity */}
-          <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
-            <SectionHeader
-              icon={Zap}
-              title="Weekly Velocity"
-              subtitle="Team performance over the last 4 weeks"
-              color={THEME.cyan}
-            />
-            <div className="h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={weeklyVelocityData} margin={{ top: 20, right: 30, bottom: 20, left: 0 }}>
-                  <defs>
-                    <linearGradient id="weekCreated" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={THEME.amber} stopOpacity={0.4} />
-                      <stop offset="95%" stopColor={THEME.amber} stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="weekCompleted" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={THEME.emerald} stopOpacity={0.4} />
-                      <stop offset="95%" stopColor={THEME.emerald} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
-                  <XAxis dataKey="week" stroke={THEME.text} tick={{ fontSize: 12 }} tickLine={false} />
-                  <YAxis stroke={THEME.text} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Legend wrapperStyle={{ paddingTop: 20 }} />
-                  <Area
-                    type="monotone"
-                    dataKey="created"
-                    name="Created"
-                    fill="url(#weekCreated)"
-                    stroke={THEME.amber}
-                    strokeWidth={2}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="completed"
-                    name="Completed"
-                    fill="url(#weekCompleted)"
-                    stroke={THEME.emerald}
-                    strokeWidth={2}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </div>
+        <div className="space-y-6">
+          <SectionHeader
+            icon={Zap}
+            title="Sprint Velocity"
+            subtitle="Historical story points delivered"
+            color={THEME.purple}
+          />
+          <div className="h-[400px] w-full glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={weeklyVelocityData}>
+                <defs>
+                  <linearGradient id="velocityGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={THEME.purple} stopOpacity={0.3} />
+                    <stop offset="95%" stopColor={THEME.purple} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="week" stroke={THEME.text} tick={{ fontSize: 11 }} tickLine={false} />
+                <YAxis stroke={THEME.text} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <Tooltip content={<CustomTooltip />} />
+                <Legend />
+                <Area
+                  type="monotone"
+                  dataKey="points"
+                  name="Points Delivered"
+                  fill="url(#velocityGradient)"
+                  stroke={THEME.purple}
+                  strokeWidth={3}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Sprint Performance */}
           <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
-            <SectionHeader
-              icon={Calendar}
-              title="Sprint Performance"
-              subtitle="Progress across recent sprints"
-              color={THEME.purple}
-            />
-            {stats.sprintStats && stats.sprintStats.length > 0 ? (
-              <div className="space-y-4">
-                {stats.sprintStats.slice(0, 5).map((sprint) => {
-                  const progress = sprint.totalIssues > 0
-                    ? (sprint.completedIssues / sprint.totalIssues) * 100
-                    : 0;
-
-                  return (
-                    <div
-                      key={sprint.id}
-                      className="p-4 rounded-xl bg-slate-800/30 hover:bg-slate-800/50 transition-colors"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <span className={cn(
-                            "px-2 py-0.5 rounded text-xs font-medium",
-                            sprint.status === 'active' && "bg-blue-500/20 text-blue-400",
-                            sprint.status === 'completed' && "bg-emerald-500/20 text-emerald-400",
-                            sprint.status === 'planned' && "bg-slate-500/20 text-slate-400"
-                          )}>
-                            {sprint.status.toUpperCase()}
-                          </span>
-                          <span className="font-semibold text-white">{sprint.name}</span>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm">
-                          <span className="text-slate-400">
-                            {sprint.completedIssues}/{sprint.totalIssues} issues
-                          </span>
-                          <span className="text-purple-400 font-medium">
-                            {sprint.completedPoints}/{sprint.totalPoints} pts
-                          </span>
-                        </div>
+            <SectionHeader icon={Calendar} title="Recent Sprints" color={THEME.cyan} />
+            <div className="space-y-4">
+              {stats.sprintStats && stats.sprintStats.length > 0 ? (
+                stats.sprintStats.map((sprint) => (
+                  <div key={sprint.id} className="flex items-center justify-between p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl">
+                    <div className="flex items-center gap-4">
+                      <div className="p-3 rounded-lg bg-cyan-500/10 text-cyan-400">
+                        <Calendar className="w-5 h-5" />
                       </div>
-                      <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                        <div
-                          className="h-full transition-all duration-700 ease-out rounded-full"
-                          style={{
-                            width: `${progress}%`,
-                            background: sprint.status === 'completed'
-                              ? THEME.gradients.emerald
-                              : sprint.status === 'active'
-                                ? THEME.gradients.blue
-                                : 'linear-gradient(90deg, #64748b 0%, #94a3b8 100%)',
-                          }}
-                        />
+                      <div>
+                        <p className="font-bold text-white">{sprint.name}</p>
+                        <p className="text-xs text-slate-500">Delivered {sprint.completedPoints} points</p>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="py-12 text-center text-slate-500">
-                <Calendar className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No sprints configured</p>
-              </div>
-            )}
+                    <div className="text-right">
+                      <p className={cn(
+                        "text-lg font-black",
+                        sprint.completedPoints > 20 ? "text-emerald-400" : "text-amber-400"
+                      )}>
+                        {sprint.completedPoints}
+                      </p>
+                      <p className="text-[10px] text-slate-500 uppercase">Points</p>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-10 opacity-30">
+                  <Calendar className="w-12 h-12 mx-auto mb-2" />
+                  <p>No sprint data available</p>
+                </div>
+              )}
+            </div>
           </div>
-        </>
+        </div>
       )}
 
       {activeTab === 'health' && (
-        <>
-          {/* Project Health Score */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Completion Rate */}
-            <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50 flex flex-col items-center justify-center">
-              <SectionHeader
-                icon={CheckCircle2}
-                title="Completion Rate"
-                color={THEME.emerald}
-              />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
+            <SectionHeader
+              icon={CheckCircle2}
+              title="Completion Health"
+              subtitle="Project delivery efficiency"
+              color={THEME.emerald}
+            />
+            <div className="flex items-center justify-center py-10">
               <ProgressRing
                 progress={metrics?.completionRate || 0}
-                size={140}
-                strokeWidth={12}
+                size={200}
+                strokeWidth={15}
                 color={THEME.emerald}
               />
-              <p className="text-slate-400 text-sm mt-4">
-                {stats.completedIssues} of {stats.totalIssues} issues completed
-              </p>
             </div>
-
-            {/* Points Progress */}
-            <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50 flex flex-col items-center justify-center">
-              <SectionHeader
-                icon={Target}
-                title="Points Progress"
-                color={THEME.purple}
-              />
-              <ProgressRing
-                progress={metrics?.pointsCompletion || 0}
-                size={140}
-                strokeWidth={12}
-                color={THEME.purple}
-              />
-              <p className="text-slate-400 text-sm mt-4">
-                {stats.completedPoints} of {stats.totalPoints} story points
-              </p>
-            </div>
-
-            {/* Burn Rate */}
-            <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50 flex flex-col items-center justify-center">
-              <SectionHeader
-                icon={Flame}
-                title="Burn Rate"
-                color={THEME.amber}
-              />
-              <ProgressRing
-                progress={Math.min(metrics?.burnRate || 0, 100)}
-                size={140}
-                strokeWidth={12}
-                color={metrics?.burnRate && metrics.burnRate >= 100 ? THEME.emerald : THEME.amber}
-              />
-              <p className="text-slate-400 text-sm mt-4">
-                {stats.recentResolved} resolved vs {stats.recentCreated} created (7d)
-              </p>
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <div className="p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl">
+                <p className="text-xs text-slate-500 uppercase mb-1">Total Issues</p>
+                <p className="text-2xl font-bold text-white">{stats.totalIssues}</p>
+              </div>
+              <div className="p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl">
+                <p className="text-xs text-slate-500 uppercase mb-1">Points Completed</p>
+                <p className="text-2xl font-bold text-white">{stats.completedPoints}</p>
+              </div>
             </div>
           </div>
 
-          {/* Time Metrics */}
+          <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
+            <SectionHeader
+              icon={Target}
+              title="Point Delivery"
+              subtitle="Story points status"
+              color={THEME.purple}
+            />
+            <div className="flex items-center justify-center py-10">
+              <ProgressRing
+                progress={metrics?.pointsCompletion || 0}
+                size={200}
+                strokeWidth={15}
+                color={THEME.purple}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <div className="p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl">
+                <p className="text-xs text-slate-500 uppercase mb-1">Total Points</p>
+                <p className="text-2xl font-bold text-white">{stats.totalPoints}</p>
+              </div>
+              <div className="p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl">
+                <p className="text-xs text-slate-500 uppercase mb-1">Avg Resolution</p>
+                <p className="text-2xl font-bold text-white">{Math.round(metrics?.avgResolutionDays || 0)}d</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
+            <SectionHeader
+              icon={Flame}
+              title="Burn Rate"
+              subtitle="Created vs Resolved Ratio"
+              color={THEME.rose}
+            />
+            <div className="flex items-center justify-center py-10">
+              <ProgressRing
+                progress={metrics?.burnRate || 100}
+                size={200}
+                strokeWidth={15}
+                color={metrics?.burnRate && metrics.burnRate >= 100 ? THEME.emerald : THEME.rose}
+              />
+            </div>
+            <div className="text-center mt-4">
+              <p className="text-sm text-slate-400">
+                {metrics?.burnRate && metrics.burnRate >= 100
+                  ? "Resolving more than creating. Good progress!"
+                  : "Creating faster than resolving. Backlog growing."}
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <div className="p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl">
+                <p className="text-xs text-slate-500 uppercase mb-1">Recent Created</p>
+                <p className="text-2xl font-bold text-white">{stats.recentCreated}</p>
+              </div>
+              <div className="p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl">
+                <p className="text-xs text-slate-500 uppercase mb-1">Recent Resolved</p>
+                <p className="text-2xl font-bold text-white">{stats.recentResolved}</p>
+              </div>
+            </div>
+          </div>
+
           <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
             <SectionHeader
               icon={Timer}
-              title="Time Metrics"
-              subtitle="Time tracking insights"
-              color={THEME.cyan}
+              title="Avg Issue Age"
+              subtitle="Time to resolution"
+              color={THEME.pink}
             />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-              <div className="text-center p-6 rounded-xl bg-slate-800/30">
-                <Timer className="w-10 h-10 text-cyan-400 mx-auto mb-3" />
-                <p className="text-3xl font-bold text-white mb-1">
-                  {Math.round(stats.avgResolutionTime / 24)} days
-                </p>
-                <p className="text-slate-500 text-sm">Avg Resolution Time</p>
+            <div className="space-y-6 py-6">
+              <div className="flex justify-between items-center text-center">
+                <div className="flex-1 p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl mr-2">
+                  <Timer className="w-8 h-8 mx-auto mb-2 text-pink-400" />
+                  <p className="text-2xl font-bold text-white">{Math.round(metrics?.avgResolutionDays || 0)}d</p>
+                  <p className="text-[10px] text-slate-500 uppercase">Avg Days</p>
+                </div>
+                <div className="flex-1 p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl ml-2">
+                  <Clock className="w-8 h-8 mx-auto mb-2 text-cyan-400" />
+                  <p className="text-2xl font-bold text-white">{stats.avgResolutionTime || 0}h</p>
+                  <p className="text-[10px] text-slate-500 uppercase">Avg Hours</p>
+                </div>
               </div>
-              <div className="text-center p-6 rounded-xl bg-slate-800/30">
-                <Clock className="w-10 h-10 text-purple-400 mx-auto mb-3" />
-                <p className="text-3xl font-bold text-white mb-1">
-                  {Math.round(stats.totalTimeLogged / 60)}h
+              <div className="p-4 bg-slate-950/40 border border-slate-800/50 rounded-xl">
+                <div className="flex items-center gap-3 mb-2">
+                  <Brain className="w-5 h-5 text-purple-400" />
+                  <p className="text-sm font-medium text-white">Insight</p>
+                </div>
+                <p className="text-xs text-slate-400">
+                  Issues are resolved in about {Math.round(metrics?.avgResolutionDays || 0)} days on average.
+                  Resolution efficiency is {stats.recentResolved > 0 ?'high' : 'low'} based on recent activity.
                 </p>
-                <p className="text-slate-500 text-sm">Total Time Logged</p>
-              </div>
-              <div className="text-center p-6 rounded-xl bg-slate-800/30">
-                <Brain className="w-10 h-10 text-amber-400 mx-auto mb-3" />
-                <p className="text-3xl font-bold text-white mb-1">
-                  {stats.totalIssues > 0
-                    ? Math.round(stats.totalTimeLogged / stats.totalIssues / 60)
-                    : 0}h
-                </p>
-                <p className="text-slate-500 text-sm">Avg Time per Issue</p>
               </div>
             </div>
           </div>
 
-          {/* Issue Aging Detailed */}
-          <div className="glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
+          <div className="lg:col-span-2 glass-card p-6 rounded-2xl bg-slate-900/40 border border-slate-800/50">
             <SectionHeader
               icon={AlertTriangle}
-              title="Issue Age Analysis"
-              subtitle="Understanding how long issues have been open"
-              color={THEME.rose}
+              title="Issue Distribution (Age)"
+              subtitle="Current backlog aging"
+              color={THEME.orange}
             />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={agingChartData}
-                      innerRadius={70}
-                      outerRadius={100}
-                      paddingAngle={3}
-                      dataKey="value"
-                      stroke="none"
-                    >
-                      {agingChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip content={<CustomTooltip />} />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-3">
-                {agingChartData.map((bucket) => (
-                  <div
-                    key={bucket.name}
-                    className="flex items-center justify-between p-3 rounded-xl bg-slate-800/30"
+            <div className="h-[300px] w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={agingChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={100}
+                    paddingAngle={5}
+                    dataKey="value"
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className="w-4 h-4 rounded-md"
-                        style={{
-                          backgroundColor: bucket.fill,
-                          boxShadow: `0 0 12px ${bucket.fill}50`
-                        }}
-                      />
-                      <span className="text-slate-300">{bucket.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-white font-bold text-lg">{bucket.value}</span>
-                      <span className="text-slate-500 text-sm">issues</span>
-                    </div>
+                    {agingChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Pie>
+                  <Tooltip content={<CustomTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex flex-wrap justify-center gap-4 mt-4">
+                {agingChartData.map((bucket) => (
+                  <div key={bucket.name} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: bucket.fill }} />
+                    <span className="text-xs text-slate-400">{bucket.name}</span>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-        </>
+        </div>
       )}
     </div>
   )

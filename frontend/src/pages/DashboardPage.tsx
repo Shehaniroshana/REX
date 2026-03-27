@@ -4,7 +4,6 @@ import { useProjectStore } from '@/store/projectStore'
 import { useIssueStore } from '@/store/issueStore'
 import { useAuthStore } from '@/store/authStore'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
   Plus, FolderKanban, Clock, Users,
@@ -18,6 +17,7 @@ import AnalyticsCharts from '@/components/dashboard/AnalyticsCharts'
 import RecentActivity from '@/components/dashboard/RecentActivity'
 import QuickActions from '@/components/dashboard/QuickActions'
 import { subDays, format, isSameDay, parseISO } from 'date-fns'
+import CreateProjectModal from '@/components/modals/CreateProjectModal'
 
 export default function DashboardPage() {
   const { projects, fetchProjects, createProject, isLoading } = useProjectStore()
@@ -26,13 +26,6 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [formData, setFormData] = useState<CreateProjectInput>({
-    key: '',
-    name: '',
-    description: '',
-    color: '#06b6d4',
-    ownerId: '',
-  })
 
   useEffect(() => {
     fetchProjects()
@@ -90,17 +83,14 @@ export default function DashboardPage() {
     }
   }, [issues, projects, user])
 
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault()
-
+  const handleCreateProject = async (data: CreateProjectInput) => {
     try {
-      const project = await createProject(formData)
+      const project = await createProject(data)
       toast({
         title: "Success",
         description: "Project created successfully!",
       })
       setShowCreateModal(false)
-      setFormData({ key: '', name: '', description: '', color: '#06b6d4', ownerId: '' })
       navigate(`/projects/${project.id}`)
     } catch (error: any) {
       toast({
@@ -325,97 +315,12 @@ export default function DashboardPage() {
       </div>
     </div>
 
-      {/* Create Project Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="glass-card bg-blue-950/30 border border-white/10 w-full max-w-lg rounded-3xl animate-scale-in shadow-2xl shadow-primary/10">
-            <div className="p-8">
-              <div className="flex items-center gap-5 mb-8">
-                <div className="w-14 h-14 rounded-2xl bg-primary/20 flex items-center justify-center shadow-lg shadow-primary/30 ring-2 ring-primary/10">
-                  <FolderKanban className="w-7 h-7 text-primary" />
-                </div>
-                <div>
-                  <h2 className="text-2xl font-black text-white">Create New Project</h2>
-                  <p className="text-slate-400">Start organizing your work today</p>
-                </div>
-              </div>
-
-              <form onSubmit={handleCreateProject} className="space-y-5">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-300 ml-1">Project Key <span className="text-red-400">*</span></label>
-                  <Input
-                    placeholder="e.g., PROJ"
-                    value={formData.key}
-                    onChange={(e) => setFormData({ ...formData, key: e.target.value.toUpperCase() })}
-                    maxLength={10}
-                    required
-                    className="font-mono uppercase bg-slate-900/50 border-slate-700 text-white focus:border-primary h-12 text-lg tracking-wider"
-                  />
-                  <p className="text-xs text-slate-500 ml-1">
-                    Unique identifier used in issue keys (max 10 chars)
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-300 ml-1">Project Name <span className="text-red-400">*</span></label>
-                  <Input
-                    placeholder="My Awesome Project"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    className="bg-slate-900/50 border-slate-700 text-white focus:border-primary h-12"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-300 ml-1">Description</label>
-                  <Input
-                    placeholder="What is this project about?"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    className="bg-slate-900/50 border-slate-700 text-white focus:border-primary h-12"
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <label className="text-sm font-bold text-slate-300 ml-1">Theme Color</label>
-                  <div className="flex gap-3 flex-wrap p-4 bg-slate-900/30 rounded-xl border border-slate-800/50">
-                    {['#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b', '#10b981'].map((color) => (
-                      <button
-                        key={color}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, color })}
-                        className={`w-10 h-10 rounded-full transition-all duration-300 ${formData.color === color
-                          ? 'ring-4 ring-offset-4 ring-offset-slate-900 ring-white scale-110'
-                          : 'hover:scale-110 hover:shadow-lg'
-                          }`}
-                        style={{
-                          backgroundColor: color,
-                          boxShadow: formData.color === color ? `0 0 20px ${color}` : 'none'
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex gap-4 pt-6">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowCreateModal(false)}
-                    className="flex-1 h-12"
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" variant="neon" className="flex-1 h-12 text-base shadow-lg shadow-primary/20" disabled={isLoading}>
-                    {isLoading ? 'Creating...' : 'Create Project'}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          </div>
-          </div>
-      )}
+      <CreateProjectModal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onSubmit={handleCreateProject}
+        isLoading={isLoading}
+      />
     </>
   )
 }

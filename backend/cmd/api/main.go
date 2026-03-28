@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"rex-backend/internal/config"
 	"rex-backend/internal/database"
@@ -44,6 +45,8 @@ func main() {
 				"error": err.Error(),
 			})
 		},
+		Prefork:       false,
+		StrictRouting: false,
 	})
 
 	app.Use(recover.New())
@@ -52,15 +55,20 @@ func main() {
 
 	app.Use(cors.New(cors.Config{
 		AllowOrigins:     cfg.AllowedOrigins,
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
-		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization, Connection, Upgrade, Sec-WebSocket-Key, Sec-WebSocket-Version, Sec-WebSocket-Extensions",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS, UPGRADE",
 		AllowCredentials: true,
+		ExposeHeaders:    "Sec-WebSocket-Accept, Sec-WebSocket-Protocol, Sec-WebSocket-Version",
 	}))
 
 	// API global group
 	api := app.Group("/api")
 
-	// 4. Conditional Backend Initialization
+	// 4. Initialize WebSocket hub early (Always available)
+	hub := websocket.NewHub()
+	go hub.Run()
+
+	// 5. Conditional Backend Initialization
 	var dbConnected bool
 	if cfg.DBURL != "" || cfg.DBHost != "" || cfg.DBPath != "" {
 		db, err := database.Connect(cfg)
@@ -68,7 +76,7 @@ func main() {
 			// Run migrations
 			if err := database.Migrate(db); err == nil {
 				dbConnected = true
-				setupFullAPI(api, db, cfg)
+				setupFullAPI(api, db, cfg, hub)
 			} else {
 				log.Println("⚠️  Database migration failed:", err)
 			}
@@ -82,15 +90,49 @@ func main() {
 	// Setup Handler (Always accessible, outside of any potentially protected groups)
 	setupHandler := handlers.NewSetupHandler(store, dbConnected)
 	app.Get("/api/setup/status", setupHandler.GetStatus)
-	app.Post("/api/setup/database-url", setupHandler.SaveDatabaseURL)
 
-	// Health check (always available)
+	// After a successful setup save the backend shuts down gracefully so that
+	// the process manager (our new while loop / Electron / concurrently) restarts
+	// it with the full API routes (including /api/auth/login) loaded from the store.
+	app.Post("/api/setup/database-url", func(c *fiber.Ctx) error {
+		if err := setupHandler.SaveDatabaseURL(c); err != nil {
+			return err
+		}
+
+		// Fiber's c.Status().JSON() returns nil error. We must check the actual status code set.
+		if c.Response().StatusCode() >= 400 {
+			return nil
+		}
+
+		go func() {
+			log.Println("✅ Setup complete — restarting backend to activate full API...")
+			_ = app.Shutdown()
+			os.Exit(0) // Clean exit so the shell loop restarts us
+		}()
+		return nil
+	})
+
+	// 6. WebSocket route (Always available at /api/ws)
+	api.Get("/ws", websocketMiddleware.New(func(c *websocketMiddleware.Conn) {
+		log.Println("WebSocket upgrade request received")
+		token := c.Query("token")
+		if token == "" {
+			log.Println("WebSocket: No token provided")
+			c.WriteMessage(websocketMiddleware.TextMessage, []byte(`{"type":"error","data":{"message":"No authentication token"}}`))
+			c.Close()
+			return
+		}
+		log.Println("WebSocket: Token received, establishing connection")
+		websocket.HandleConnection(hub, c, token)
+	}))
+
+	// Health check (always available) — frontend can poll this after restart
 	app.Get("/health", func(c *fiber.Ctx) error {
 		status := "setup_required"
 		if dbConnected {
 			status = "ok"
 		}
-		return c.JSON(fiber.Map{"status": status})
+		return c.JSON(fiber.Map{"status": status, "dbConnected": dbConnected})
 	})
 
 	// 5. Start server
@@ -110,7 +152,7 @@ func main() {
 }
 
 // setupFullAPI handles the full app initialization once DB is ready
-func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config) {
+func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config, hub *websocket.Hub) {
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
 	projectRepo := repository.NewProjectRepository(db)
@@ -122,9 +164,7 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config) {
 	workLogRepo := repository.NewWorkLogRepository(db)
 	notificationRepo := repository.NewNotificationRepository(db)
 
-	// Initialize WebSocket hub
-	hub := websocket.NewHub()
-	go hub.Run()
+	// Notification service uses the shared hub
 
 	// Initialize services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
@@ -285,14 +325,5 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config) {
 	links.Delete("/:id", issueLinkHandler.DeleteLink)
 	links.Get("/issue/:issueId", issueLinkHandler.GetIssueLinks)
 
-	// WebSocket route
-	api.Get("/ws", websocketMiddleware.New(func(c *websocketMiddleware.Conn) {
-		token := c.Query("token")
-		if token == "" {
-			c.WriteMessage(websocketMiddleware.TextMessage, []byte(`{"type":"error","data":{"message":"No authentication token"}}`))
-			c.Close()
-			return
-		}
-		websocket.HandleConnection(hub, c, token)
-	}))
+	// Workspace routes...
 }

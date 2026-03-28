@@ -12,6 +12,7 @@ import {
 import { useEffect, useState } from 'react'
 import { wsService } from '@/services/websocketService'
 import NotificationDropdown from '@/components/NotificationDropdown'
+import OnboardingTour from '@/components/OnboardingTour'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import SpaceBackground from '@/components/three/SpaceBackground'
 
@@ -45,11 +46,12 @@ export default function AppLayout() {
     <div className="flex min-h-screen bg-transparent">
       {/* Space Background */}
       <SpaceBackground />
+      <OnboardingTour />
 
       {/* Vertical Sidebar */}
       <aside className="fixed left-0 top-0 h-screen w-64 sidebar-glass z-50 flex flex-col">
         {/* Logo Section */}
-        <div className="p-6">
+        <div className="p-6 onboarding-logo">
           <Link to="/" className="flex items-center gap-3 group">
             <div className="relative">
               <div className="absolute inset-0 bg-cyan-500 rounded-xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity duration-500" />
@@ -74,7 +76,7 @@ export default function AppLayout() {
 
             <Link
               to="/"
-              className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname === '/'
+              className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 group onboarding-dashboard ${location.pathname === '/'
                 ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)] font-bold'
                 : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
@@ -104,7 +106,7 @@ export default function AppLayout() {
             </h3>
 
             {/* Project Selector */}
-            <div className="relative mb-4">
+            <div className="relative mb-4 onboarding-project-selector">
               <button
                 onClick={() => setShowProjectMenu(!showProjectMenu)}
                 className={`w-full flex items-center justify-between gap-2 px-4 py-3 bg-slate-900/50 border border-slate-800 rounded-xl text-sm font-medium transition-all hover:border-slate-700 ${showProjectMenu ? 'ring-2 ring-cyan-500/20 border-cyan-500/30' : ''
@@ -159,7 +161,7 @@ export default function AppLayout() {
 
             {/* Project Links */}
             {projectId ? (
-              <div className="space-y-1">
+              <div className="space-y-1 onboarding-project-links">
                 <Link to={`/projects/${projectId}/board`} className={`flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.includes('/board') ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/40 shadow-[0_0_10px_rgba(6,182,212,0.2)]' : 'text-slate-400 hover:text-white hover:bg-white/5'}`}>
                   <LayoutDashboard className="w-4 h-4" /> Board
                 </Link>
@@ -187,7 +189,7 @@ export default function AppLayout() {
         {/* User Profile Section */}
         <div className="p-4 border-t border-slate-800/50 bg-slate-900/30">
           <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 onboarding-notifications">
               <NotificationDropdown />
               <LanguageSwitcher />
             </div>
@@ -201,7 +203,7 @@ export default function AppLayout() {
           </div>
 
           {user && (
-            <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50">
+            <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50 onboarding-profile">
               <Avatar className="w-8 h-8 ring-2 ring-cyan-500/20">
                 <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-bold">
                   {getInitials(user.firstName, user.lastName)}

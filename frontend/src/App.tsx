@@ -1,5 +1,5 @@
 import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuthStore } from '@/store/authStore'
 import { Toaster } from '@/components/ui/toaster'
 import Antigravity from '@/components/ui/Antigravity'
@@ -14,7 +14,6 @@ import ProjectPage from '@/pages/ProjectPage'
 import BoardPage from '@/pages/BoardPage'
 import BacklogPage from '@/pages/BacklogPage'
 import ReportsPage from '@/pages/ReportsPage'
-import RoadmapPage from '@/pages/RoadmapPage'
 import IssueDetailPage from '@/pages/IssueDetailPage'
 import AdminPage from '@/pages/AdminPage'
 import SprintManagementPage from '@/pages/SprintManagementPage'
@@ -46,15 +45,19 @@ function CallClone() {
     return cached === 'true' ? true : null
   })
 
+  const hasSetState = useRef(false)
+
   useEffect(() => {
     const fetchSetupStatus = async () => {
       try {
         const status = await setupService.getStatus()
+        hasSetState.current = true
         setIsSetupConfigured(status.configured)
         localStorage.setItem('rex_setup_configured', status.configured ? 'true' : 'false')
       } catch {
         // Fallback to false if API is unreachable (it might be trying to connect before port is ready)
-        if (isSetupConfigured === null) {
+        if (!hasSetState.current) {
+          hasSetState.current = true
           setIsSetupConfigured(false)
         }
       }
@@ -129,7 +132,6 @@ function CallClone() {
             <Route path="/projects/:projectId/board" element={<BoardPage />} />
             <Route path="/projects/:projectId/backlog" element={<BacklogPage />} />
             <Route path="/projects/:projectId/reports" element={<ReportsPage />} />
-            <Route path="/projects/:projectId/roadmap" element={<RoadmapPage />} />
             <Route path="/projects/:projectId/sprints" element={<SprintManagementPage />} />
             <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
             <Route path="/projects/:projectId/issues/:issueId" element={<IssueDetailPage />} />

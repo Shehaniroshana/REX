@@ -28,7 +28,6 @@ func (h *SetupHandler) GetStatus(c *fiber.Ctx) error {
 
 type saveDatabaseURLRequest struct {
 	DatabaseURL string `json:"databaseUrl"`
-	ShouldSeed  bool   `json:"shouldSeed"`
 }
 
 func (h *SetupHandler) SaveDatabaseURL(c *fiber.Ctx) error {
@@ -45,20 +44,13 @@ func (h *SetupHandler) SaveDatabaseURL(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
 	}
 
-	// 3. Seed if requested
-	if req.ShouldSeed {
-		// We need a DB connection to seed
-		db, err := setup.GetDBConnection(req.DatabaseURL)
-		if err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to connect for seeding: " + err.Error()})
-		}
-		// Run migrations first to ensure schema is ready
-		if err := database.Migrate(db); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Migration failed: " + err.Error()})
-		}
-		if err := database.Seed(db); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Seeding failed: " + err.Error()})
-		}
+	// 3. Initialize default admin user alongside migrations
+	db, err := setup.GetDBConnection(req.DatabaseURL)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to connect for setup: " + err.Error()})
+	}
+	if err := database.Migrate(db); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Migration failed: " + err.Error()})
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{

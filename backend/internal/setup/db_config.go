@@ -199,5 +199,7 @@ func ValidateConnection(databaseURL string) error {
 }
 
 func GetDBConnection(databaseURL string) (*gorm.DB, error) {
-	return gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
+	return gorm.Open(postgres.Open(databaseURL), &gorm.Config{
+		PrepareStmt: true,
+	})
 }

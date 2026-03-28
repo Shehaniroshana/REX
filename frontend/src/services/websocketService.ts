@@ -16,7 +16,7 @@ class WebSocketService {
     private ws: WebSocket | null = null
     private reconnectAttempts = 0
     private readonly MAX_RECONNECT_ATTEMPTS = 5
-    private WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws'
+    private WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api/ws'
     private eventListeners: Map<string, Set<(data: any) => void>> = new Map()
     private reconnectTimeout: ReturnType<typeof setTimeout> | null = null
 

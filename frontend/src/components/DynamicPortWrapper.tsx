@@ -18,7 +18,7 @@ export function DynamicPortWrapper({ children }: DynamicPortWrapperProps) {
         try {
           const port = await window.electronAPI.getBackendPort()
           const dynamicApiUrl = `http://127.0.0.1:${port}`
-          const dynamicWsUrl = `ws://127.0.0.1:${port}/ws`
+          const dynamicWsUrl = `ws://127.0.0.1:${port}/api/ws`
 
           // Update Axios baseURL dynamically
           api.defaults.baseURL = dynamicApiUrl

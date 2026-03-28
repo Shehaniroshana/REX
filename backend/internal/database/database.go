@@ -48,10 +48,10 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 			)
 		}
 
-	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Info),
-		PrepareStmt: true,
-	})
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+			Logger:      logger.Default.LogMode(logger.Info),
+			PrepareStmt: true,
+		})
 	}
 
 	if err != nil {

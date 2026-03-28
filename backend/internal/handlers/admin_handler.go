@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"github.com/braviz/jira-clone/internal/models"
-	"github.com/braviz/jira-clone/internal/repository"
-	"github.com/braviz/jira-clone/internal/services"
+	"rex-backend/internal/models"
+	"rex-backend/internal/repository"
+	"rex-backend/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"

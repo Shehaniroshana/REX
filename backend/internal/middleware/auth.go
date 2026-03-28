@@ -17,6 +17,12 @@ type Claims struct {
 
 func Protected(jwtSecret string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		// Bypass for setup and health checks
+		path := c.Path()
+		if strings.Contains(path, "/setup") || strings.Contains(path, "/health") {
+			return c.Next()
+		}
+
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{

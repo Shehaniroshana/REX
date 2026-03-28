@@ -15,9 +15,10 @@ export const setupService = {
     return response.data
   },
 
-  async saveDatabaseURL(databaseUrl: string): Promise<SaveDatabaseURLResponse> {
+  async saveDatabaseURL(databaseUrl: string, shouldSeed: boolean = false): Promise<SaveDatabaseURLResponse> {
     const response = await api.post<SaveDatabaseURLResponse>('/api/setup/database-url', {
       databaseUrl,
+      shouldSeed,
     })
     return response.data
   },

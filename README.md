@@ -1,221 +1,85 @@
-# JiraFlow - Enterprise Project Management
+# REX: Strategic Management Platform
 
-A full-stack project management application inspired by Jira, built with modern technologies.
+**REX** is an elite, high-performance project management ecosystem. It is architected as a **sovereign desktop application**—a powerful client-side shell that provides the visual fidelity of a high-end web app while giving you total control over where your data lives.
 
-## 🎯 Features
+## 📐 BYODB (Bring Your Own Database)
 
-- **Authentication & Authorization**: JWT-based secure authentication with modern animated login pages
-- **Project Management**: Create and manage multiple projects with dashboard analytics
-- **Kanban Boards**: Advanced drag-and-drop task management with optimistic updates via `@hello-pangea/dnd`
-- **Sprint Management**: Plan and track sprints, move issues to backlog/active sprints
-- **Advanced Issue Tracking**: 
-  - Rich issue details with subtasks & progress tracking
-  - Linked issues (blocks, relates to, etc.)
-  - Time tracking and estimation
-  - Activity timeline & Comments
-  - Labels and Assignees
-- **Strategic Roadmap**: Visual timeline planning with neon-glowing Gantt charts
-- **Real-time Updates**: Socket.io integration for instant collaboration
-- **Interactive UI**:
-  - **Neural Flow** backgrounds with interactive physics
-  - **Ultra-Glass** aesthetics with global transparency
-  - Smooth animations (Framer Motion)
-  - Responsive Dashboard with Recharts
-- **File Attachments**: Upload and manage files
-- **User Management**: Role-based access control with avatar support
+REX is built on the principle of **Data Sovereignty**. Unlike traditional SaaS providers, REX does not own your data. You provide the infrastructure; REX provides the intelligence.
 
-## 🏗️ Tech Stack
+- **Total Isolation**: Securely connect REX to your own local or remote **PostgreSQL** instance via an encrypted setup workflow.
+- **Strategic Flexibility**: Point the REX shell to your own cloud cluster (Postgres) or a local development database. You have 100% control over your data persistence.
+- **Zero-Access Architecture**: REX is a local-only platform shell. All projects, tasks, and analytics are stored directly in the database you provide—nothing is sent to external proprietary servers.
 
-### Backend
-- **Language**: Go 1.21+
-- **Framework**: Fiber (Express-inspired web framework)
-- **Database**: PostgreSQL
-- **ORM**: GORM
-- **Authentication**: JWT
-- **Real-time**: Gorilla WebSocket
-- **Validation**: go-playground/validator
+---
 
-### Frontend
-- **Framework**: React 18 + TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS (Glassmorphism & Neon effects)
-- **UI Components**: Radix UI primitives & Custom Components
-- **Animations**: Framer Motion & Three.js (@react-three/fiber)
-- **State Management**: Zustand
-- **API Client**: Axios
-- **Drag & Drop**: @hello-pangea/dnd
-- **Data Visualization**: Recharts
-- **Real-time**: Socket.io Client
+## ✨ The REX Experience
 
-## 📁 Project Structure
+- **💎 Ultra-Glass UI**: A premium, depth-layered interface with transparency and high-contrast design to minimize cognitive load.
+- **🌀 Neural Flow**: Interactive background physics responsive to global cursor events, powered by Three.js and tsParticles.
+- **📈 Advanced Analytics Engine**: 
+  - **Dynamic Burndown**: Real-time sprint velocity tracking vs. ideal delivery pace.
+  - **Intel Stats**: Automated project health analysis including average resolution time and historical trends.
+- **🛡️ Integrity Layers**: 
+  - **Atomic Key Sequencing**: Transaction-guaranteed, collision-free task counting across multi-user environments.
+  - **Permission Scoping**: Mandatory service-level membership authorization for all data access.
 
-```
-Jira_clone/
-├── backend/                 # Go backend
-│   ├── cmd/
-│   │   └── api/            # Application entry point
-│   ├── internal/
-│   │   ├── config/         # Configuration
-│   │   ├── database/       # Database connection
-│   │   ├── handlers/       # HTTP handlers
-│   │   ├── middleware/     # Middleware
-│   │   ├── models/         # Database models
-│   │   ├── repository/     # Data access layer
-│   │   ├── services/       # Business logic
-│   │   ├── utils/          # Utilities
-│   │   └── websocket/      # WebSocket handlers
-│   ├── migrations/         # Database migrations
-│   └── go.mod
-├── frontend/               # React frontend
-│   ├── src/
-│   │   ├── components/    # Reusable components
-│   │   ├── pages/         # Page components
-│   │   ├── hooks/         # Custom hooks
-│   │   ├── store/         # State management
-│   │   ├── services/      # API services
-│   │   ├── types/         # TypeScript types
-│   │   └── lib/           # Utilities
-│   └── package.json
-├── docker-compose.yml      # Docker setup
-└── .env.example           # Environment variables template
-```
+---
 
-## 🚀 Getting Started
+## 🏗️ Technical DNA
 
-### Prerequisites
-- Go 1.21 or higher
-- Node.js 18 or higher
-- PostgreSQL 14 or higher
-- Docker (optional)
+### Engineering Stack
+- **Engine (Core)**: [Go 1.21+](https://go.dev/) + [Fiber](https://gofiber.io/) (Native OS binary)
+- **Interface (Visual)**: [React 18](https://reactjs.org/) + [TypeScript](https://www.typescriptlang.org/) + [Vite](https://vitejs.dev/)
+- **Visual Mechanics**: [Three.js](https://threejs.org/) + [Framer Motion](https://www.framer.com/motion/) (Dynamic UI motion)
+- **OS Native Shell**: [Electron](https://www.electronjs.org/) + [Electron Builder](https://www.electron.build/)
 
-### Installation
+---
 
-1. **Clone the repository**
+## 🚀 Deployment & Strategy
+
+REX is designed for rapid initialization via an intuitive, encrypted setup flow.
+
+### 1. Preparation & Repository
 ```bash
 git clone <repository-url>
-cd Jira_clone
+cd rex
 ```
 
-2. **Setup Backend**
+### 2. Initialization & BYODB Configuration
+REX uses an interactive setup layer to establish your custom database connection.
 ```bash
+# Start your local or remote database service (e.g., PostgreSQL)
+# Then initialize the REX backend:
 cd backend
 cp .env.example .env
-# Edit .env with your database credentials
-go mod download
 go run cmd/api/main.go
+# Open http://localhost:8080/setup and input your private Database URL
 ```
 
-3. **Setup Frontend**
+### 3. Application Execution
+REX can be run as a development environment or a packaged desktop application.
 ```bash
+# Install dependencies from root
 npm install
+
+# Build and run the Desktop Application
 npm run dev
 ```
 
-This installs frontend dependencies from the project root using npm workspaces.
+---
 
-Or run the frontend commands directly from root:
+## 🔒 Security & Data Integrity
+- **Encrypted Local Configuration**: Stores sensitive environment variables using a secure, key-protected store on your machine.
+- **Physical Cleanup**: Local file attachments are automatically purged from the disk when their associated records are deleted.
+- **Atomic Transactions**: All state-critical operations are wrapped in PostgreSQL transactions to prevent data corruption.
 
-```bash
-npm run dev
-```
+---
 
-4. **Using Docker (Alternative)**
-```bash
-docker-compose up -d
-```
+## 📦 System Modules
+- **`electron/`**: Native bridge and binary embedding logic.
+- **`backend/internal/setup`**: Guided configuration and persistence initialization flow.
+- **`frontend/src/components/ui/Antigravity`**: Interactive physics background engine.
+- **`frontend/src/pages/ReportsPage`**: Complex charting and data intelligence.
 
-### Environment Variables
-
-#### Backend (.env)
-```env
-DB_HOST=localhost
-DB_PORT=5432
-DB_USER=postgres
-DB_PASSWORD=postgres
-DB_NAME=jira_clone
-JWT_SECRET=your-secret-key
-PORT=8080
-FRONTEND_URL=http://localhost:5173
-```
-
-#### Frontend (.env)
-```env
-VITE_API_URL=http://localhost:8080
-VITE_WS_URL=ws://localhost:8080/ws
-```
-
-## 📚 API Documentation
-
-### Authentication Endpoints
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `GET /api/auth/me` - Get current user
-
-### Project Endpoints
-- `GET /api/projects` - List all projects
-- `POST /api/projects` - Create project
-- `GET /api/projects/:id` - Get project details
-- `PUT /api/projects/:id` - Update project
-- `DELETE /api/projects/:id` - Delete project
-
-### Issue Endpoints
-- `GET /api/projects/:id/issues` - List project issues
-- `POST /api/projects/:id/issues` - Create issue
-- `GET /api/issues/:id` - Get issue details
-- `PUT /api/issues/:id` - Update issue
-- `DELETE /api/issues/:id` - Delete issue
-
-### Sprint Endpoints
-- `GET /api/projects/:id/sprints` - List project sprints
-- `POST /api/projects/:id/sprints` - Create sprint
-- `PUT /api/sprints/:id` - Update sprint
-- `DELETE /api/sprints/:id` - Delete sprint
-
-## 🎨 UI Components
-
-Built with shadcn/ui for a premium, accessible design:
-- Button, Input, Select, Textarea
-- Dialog, Dropdown, Popover
-- Card, Badge, Avatar
-- Table, Tabs, Toast
-- Calendar, Date Picker
-- Command Palette
-
-## 🔒 Security Features
-
-- Password hashing with bcrypt
-- JWT token authentication
-- CORS protection
-- SQL injection prevention
-- XSS protection
-- Rate limiting
-
-## 📦 Database Schema
-
-- **users** - User accounts and profiles
-- **projects** - Project information
-- **issues** - Tasks and issues
-- **sprints** - Sprint management
-- **comments** - Issue comments
-- **attachments** - File uploads
-- **activity_logs** - Audit trail
-
-## 🧪 Testing
-
-```bash
-# Backend tests
-cd backend
-go test ./...
-
-# Frontend tests
-cd frontend
-npm run test
-```
-
-## 📝 License
-
-MIT License
-
-## 👥 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+---
+REX. You own the data. We provide the power.

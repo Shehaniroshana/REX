@@ -41,17 +41,22 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function CallClone() {
-  const [isSetupConfigured, setIsSetupConfigured] = useState<boolean | null>(null)
+  const [isSetupConfigured, setIsSetupConfigured] = useState<boolean | null>(() => {
+    const cached = localStorage.getItem('rex_setup_configured')
+    return cached === 'true' ? true : null
+  })
 
   useEffect(() => {
     const fetchSetupStatus = async () => {
       try {
         const status = await setupService.getStatus()
         setIsSetupConfigured(status.configured)
+        localStorage.setItem('rex_setup_configured', status.configured ? 'true' : 'false')
       } catch {
-        // Fallback to true if API is unreachable (it might be trying to connect before port is ready)
-        // The real catch will happen inside the API layer if it fails.
-        setIsSetupConfigured(false)
+        // Fallback to false if API is unreachable (it might be trying to connect before port is ready)
+        if (isSetupConfigured === null) {
+          setIsSetupConfigured(false)
+        }
       }
     }
 

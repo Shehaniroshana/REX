@@ -3,7 +3,7 @@ package services
 import (
 	"errors"
 
-	"github.com/braviz/jira-clone/internal/models"
+	"rex-backend/internal/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )

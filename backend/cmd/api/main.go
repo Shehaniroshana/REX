@@ -2,49 +2,115 @@ package main
 
 import (
 	"log"
-	"os"
 
-	"github.com/braviz/jira-clone/internal/config"
-	"github.com/braviz/jira-clone/internal/database"
-	"github.com/braviz/jira-clone/internal/handlers"
-	"github.com/braviz/jira-clone/internal/middleware"
-	"github.com/braviz/jira-clone/internal/repository"
-	"github.com/braviz/jira-clone/internal/services"
-	"github.com/braviz/jira-clone/internal/setup"
-	"github.com/braviz/jira-clone/internal/websocket"
+	"rex-backend/internal/config"
+	"rex-backend/internal/database"
+	"rex-backend/internal/handlers"
+	"rex-backend/internal/middleware"
+	"rex-backend/internal/repository"
+	"rex-backend/internal/services"
+	"rex-backend/internal/setup"
+	"rex-backend/internal/websocket"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	websocketMiddleware "github.com/gofiber/websocket/v2"
+	"gorm.io/gorm"
 )
 
 func main() {
-	// Load configuration
+	// 1. Load configuration basics
 	cfg := config.LoadConfig()
 	store := setup.NewDBConfigStore(cfg.DBConfigPath, cfg.DBKeyPath)
 
+	// 2. Try to load encrypted DB URL
 	if cfg.DBURL == "" {
 		databaseURL, err := store.Load()
-		if err != nil && err != setup.ErrNotConfigured {
-			log.Println("Failed to load encrypted database URL, using environment DB settings:", err)
-		}
-		if databaseURL != "" {
+		if err == nil && databaseURL != "" {
 			cfg.DBURL = databaseURL
 		}
 	}
 
-	// Initialize database
-	db, err := database.Connect(cfg)
-	if err != nil {
-		log.Fatal("Failed to connect to database:", err)
+	// 3. Create Fiber app early to allow configuration routes even if DB fails
+	app := fiber.New(fiber.Config{
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			code := fiber.StatusInternalServerError
+			if e, ok := err.(*fiber.Error); ok {
+				code = e.Code
+			}
+			return c.Status(code).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		},
+	})
+
+	app.Use(recover.New())
+	app.Use(logger.New())
+	app.Static("/uploads", "./uploads")
+
+	app.Use(cors.New(cors.Config{
+		AllowOrigins:     cfg.AllowedOrigins,
+		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
+		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
+		AllowCredentials: true,
+	}))
+
+	// API global group
+	api := app.Group("/api")
+
+	// 4. Conditional Backend Initialization
+	var dbConnected bool
+	if cfg.DBURL != "" || cfg.DBHost != "" || cfg.DBPath != "" {
+		db, err := database.Connect(cfg)
+		if err == nil {
+			// Run migrations
+			if err := database.Migrate(db); err == nil {
+				dbConnected = true
+				setupFullAPI(api, db, cfg)
+			} else {
+				log.Println("⚠️  Database migration failed:", err)
+			}
+		} else {
+			log.Println("⚠️  Database connection failed. Please visit /setup to configure your database.")
+		}
+	} else {
+		log.Println("🔌 Database not configured. Running in Setup Mode.")
 	}
 
-	// Run migrations
-	if err := database.Migrate(db); err != nil {
-		log.Fatal("Failed to run migrations:", err)
+	// Setup Handler (Always accessible, outside of any potentially protected groups)
+	setupHandler := handlers.NewSetupHandler(store, dbConnected)
+	app.Get("/api/setup/status", setupHandler.GetStatus)
+	app.Post("/api/setup/database-url", setupHandler.SaveDatabaseURL)
+
+	// Health check (always available)
+	app.Get("/health", func(c *fiber.Ctx) error {
+		status := "setup_required"
+		if dbConnected {
+			status = "ok"
+		}
+		return c.JSON(fiber.Map{"status": status})
+	})
+
+	// 5. Start server
+	port := cfg.Port
+	if port == "" {
+		port = "8080"
 	}
 
+	log.Printf("🚀 REX Server starting on port %s", port)
+	if !dbConnected {
+		log.Println("🚦 NOTE: Server is running in SETUP MODE only.")
+	}
+
+	if err := app.Listen(":" + port); err != nil {
+		log.Fatal("Failed to start server:", err)
+	}
+}
+
+// setupFullAPI handles the full app initialization once DB is ready
+func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config) {
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
 	projectRepo := repository.NewProjectRepository(db)
@@ -64,11 +130,10 @@ func main() {
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	projectService := services.NewProjectService(projectRepo, activityRepo)
 	notificationService := services.NewNotificationService(notificationRepo, hub)
-	issueService := services.NewIssueService(issueRepo, activityRepo, notificationService)
+	issueService := services.NewIssueService(issueRepo, projectRepo, activityRepo, notificationService)
 	sprintService := services.NewSprintService(sprintRepo, activityRepo, issueRepo)
 	commentService := services.NewCommentService(commentRepo, activityRepo)
 	labelService := services.NewLabelService(labelRepo, projectRepo)
-
 	workLogService := services.NewWorkLogService(workLogRepo, issueRepo)
 	attachmentService := services.NewAttachmentService(db, "./uploads", activityRepo)
 	issueLinkService := services.NewIssueLinkService(db)
@@ -89,40 +154,6 @@ func main() {
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 	reportHandler := handlers.NewReportHandler(db)
 	issueLinkHandler := handlers.NewIssueLinkHandler(issueLinkService)
-	setupHandler := handlers.NewSetupHandler(store, cfg.DBURL != "")
-
-	// Create Fiber app
-	app := fiber.New(fiber.Config{
-		ErrorHandler: func(c *fiber.Ctx, err error) error {
-			code := fiber.StatusInternalServerError
-			if e, ok := err.(*fiber.Error); ok {
-				code = e.Code
-			}
-			return c.Status(code).JSON(fiber.Map{
-				"error": err.Error(),
-			})
-		},
-	})
-
-	// Middleware
-	app.Use(recover.New())
-	app.Use(logger.New())
-	app.Static("/uploads", "./uploads")
-
-	app.Use(cors.New(cors.Config{
-		AllowOrigins:     cfg.AllowedOrigins,
-		AllowHeaders:     "Origin, Content-Type, Accept, Authorization",
-		AllowMethods:     "GET, POST, PUT, DELETE, OPTIONS",
-		AllowCredentials: true,
-	}))
-
-	// API routes
-	api := app.Group("/api")
-
-	// Setup routes
-	setupRoutes := api.Group("/setup")
-	setupRoutes.Get("/status", setupHandler.GetStatus)
-	setupRoutes.Post("/database-url", setupHandler.SaveDatabaseURL)
 
 	// Auth routes
 	auth := api.Group("/auth")
@@ -199,7 +230,7 @@ func main() {
 	worklogs.Get("/issue/:issueId/total", workLogHandler.GetTotalTimeSpent)
 	worklogs.Get("/issue/:issueId/remaining", workLogHandler.GetRemainingTime)
 
-	// Admin routes (requires admin role)
+	// Admin routes
 	admin := protected.Group("/admin")
 	admin.Get("/users", adminHandler.GetAllUsers)
 	admin.Post("/users", adminHandler.CreateUser)
@@ -255,34 +286,13 @@ func main() {
 	links.Get("/issue/:issueId", issueLinkHandler.GetIssueLinks)
 
 	// WebSocket route
-	app.Get("/ws", websocketMiddleware.New(func(c *websocketMiddleware.Conn) {
-		// Extract token from query parameter
+	api.Get("/ws", websocketMiddleware.New(func(c *websocketMiddleware.Conn) {
 		token := c.Query("token")
 		if token == "" {
-			log.Println("WebSocket: No token provided")
 			c.WriteMessage(websocketMiddleware.TextMessage, []byte(`{"type":"error","data":{"message":"No authentication token"}}`))
 			c.Close()
 			return
 		}
-
-		// Validate token (optional: you can add JWT validation here)
-		// For now, we accept any non-empty token
 		websocket.HandleConnection(hub, c, token)
 	}))
-
-	// Health check
-	app.Get("/health", func(c *fiber.Ctx) error {
-		return c.JSON(fiber.Map{"status": "ok"})
-	})
-
-	// Start server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	log.Printf("🚀 Server starting on port %s", port)
-	if err := app.Listen(":" + port); err != nil {
-		log.Fatal("Failed to start server:", err)
-	}
 }

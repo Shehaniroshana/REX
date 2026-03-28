@@ -12,8 +12,8 @@
     "frontend"
   ],
   "scripts": {
-    "backend:dev": "cd backend && DB_DRIVER=sqlite DB_PATH=./jira-clone.db ALLOWED_ORIGINS=http://localhost:5173 PORT=8080 go run ./cmd/api/main.go",
-    "seed": "cd backend && DB_DRIVER=sqlite DB_PATH=./jira-clone.db go run ./cmd/seed/main.go",
+    "backend:dev": "cd backend && ALLOWED_ORIGINS=http://localhost:5173 PORT=8080 go run ./cmd/api/main.go",
+    "seed": "cd backend && go run ./cmd/seed/main.go",
     "backend:build:linux": "cd backend && mkdir -p ../electron/bin && CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o ../electron/bin/jira-backend ./cmd/api/main.go",
     "web:dev": "npm run dev --workspace frontend",
     "dev": "concurrently -k \"npm run backend:dev\" \"npm run web:dev\" \"wait-on tcp:5173 tcp:8080 && ELECTRON_START_URL=http://localhost:5173 electron --no-sandbox electron/main.cjs\"",

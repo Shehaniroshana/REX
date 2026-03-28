@@ -1,9 +1,9 @@
 package services
 
 import (
-	"github.com/braviz/jira-clone/internal/models"
-	"github.com/braviz/jira-clone/internal/repository"
-	"github.com/braviz/jira-clone/internal/websocket"
+	"rex-backend/internal/models"
+	"rex-backend/internal/repository"
+	"rex-backend/internal/websocket"
 	"github.com/google/uuid"
 )
 

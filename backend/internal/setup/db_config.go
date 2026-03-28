@@ -180,7 +180,7 @@ func ValidateConnection(databaseURL string) error {
 		return err
 	}
 
-	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
+	db, err := GetDBConnection(databaseURL)
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
@@ -196,4 +196,8 @@ func ValidateConnection(databaseURL string) error {
 	}
 
 	return nil
+}
+
+func GetDBConnection(databaseURL string) (*gorm.DB, error) {
+	return gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
 }

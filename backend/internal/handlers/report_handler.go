@@ -3,7 +3,7 @@ package handlers
 import (
 	"time"
 
-	"github.com/braviz/jira-clone/internal/models"
+	"rex-backend/internal/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
@@ -172,10 +172,10 @@ func (h *ReportHandler) GetProjectStats(c *fiber.Ctx) error {
 	// 3. Issues by Assignee
 	var assigneeCounts []AssigneeCount
 	if err := h.db.Table("issues").
-		Select("issues.assignee_id, users.first_name, users.last_name, count(issues.id) as count").
+		Select("issues.assignee_id, users.first_name, users.last_name, users.email, count(issues.id) as count").
 		Joins("LEFT JOIN users ON users.id = issues.assignee_id").
 		Where("issues.project_id = ?", projectID).
-		Group("issues.assignee_id, users.first_name, users.last_name").
+		Group("issues.assignee_id, users.first_name, users.last_name, users.email").
 		Scan(&assigneeCounts).Error; err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to get assignee counts"})
 	}
@@ -241,13 +241,14 @@ func (h *ReportHandler) GetComprehensiveStats(c *fiber.Ctx) error {
 		stats.CompletedPoints = completedPoints.Sum
 	}
 
-	// Total time logged
+	// Total time logged (from work logs for better accuracy)
 	var timeLogged struct {
 		Sum int64
 	}
-	if err := h.db.Model(&models.Issue{}).
-		Select("COALESCE(SUM(time_spent), 0) as sum").
-		Where("project_id = ?", projectID).
+	if err := h.db.Table("work_logs").
+		Select("COALESCE(SUM(work_logs.time_spent), 0) as sum").
+		Joins("INNER JOIN issues ON issues.id = work_logs.issue_id").
+		Where("issues.project_id = ?", projectID).
 		Scan(&timeLogged).Error; err == nil {
 		stats.TotalTimeLogged = timeLogged.Sum
 	}
@@ -257,7 +258,7 @@ func (h *ReportHandler) GetComprehensiveStats(c *fiber.Ctx) error {
 		Avg float64
 	}
 	h.db.Raw(`
-		SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (updated_at - created_at)) / 3600), 0) as avg
+		SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (COALESCE(resolved_at, updated_at) - created_at)) / 3600), 0) as avg
 		FROM issues 
 		WHERE project_id = ? AND status = 'done'
 	`, projectID).Scan(&avgResolution)
@@ -309,10 +310,10 @@ func (h *ReportHandler) GetComprehensiveStats(c *fiber.Ctx) error {
 			GROUP BY DATE(created_at)
 		),
 		resolved_counts AS (
-			SELECT DATE(updated_at) as day, COUNT(*) as count
+			SELECT DATE(COALESCE(resolved_at, updated_at)) as day, COUNT(*) as count
 			FROM issues
-			WHERE project_id = ? AND status = 'done' AND updated_at >= ?
-			GROUP BY DATE(updated_at)
+			WHERE project_id = ? AND status = 'done' AND (resolved_at >= ? OR (resolved_at IS NULL AND updated_at >= ?))
+			GROUP BY DATE(COALESCE(resolved_at, updated_at))
 		)
 		SELECT 
 			TO_CHAR(d.day, 'YYYY-MM-DD') as date,
@@ -322,7 +323,7 @@ func (h *ReportHandler) GetComprehensiveStats(c *fiber.Ctx) error {
 		LEFT JOIN created_counts c ON c.day = d.day
 		LEFT JOIN resolved_counts r ON r.day = d.day
 		ORDER BY d.day
-	`, thirtyDaysAgo, now, projectID, thirtyDaysAgo, projectID, thirtyDaysAgo).Scan(&dailyTrend)
+	`, thirtyDaysAgo, now, projectID, thirtyDaysAgo, projectID, thirtyDaysAgo, thirtyDaysAgo).Scan(&dailyTrend)
 	stats.DailyTrend = dailyTrend
 
 	// ============ ASSIGNEE DISTRIBUTION ============
@@ -508,16 +509,57 @@ func (h *ReportHandler) GetBurnDown(c *fiber.Ctx) error {
 	if sprint.StartDate != nil && sprint.EndDate != nil {
 		startDate := *sprint.StartDate
 		endDate := *sprint.EndDate
-		totalDays := int(endDate.Sub(startDate).Hours() / 24)
+		
+		// If sprint is active/planned, set end relative to now if it's earlier than planned end
+		displayEnd := endDate
+		if sprint.Status != "completed" && time.Now().Before(endDate) {
+			displayEnd = time.Now()
+		}
+		
+		totalDays := int(endDate.Sub(startDate).Hours()/24) + 1
+		currentDays := int(displayEnd.Sub(startDate).Hours()/24) + 1
 
 		if totalDays > 0 {
-			pointsPerDay := float64(totalPoints) / float64(totalDays)
+			pointsPerDay := 0.0
+			if totalDays > 1 {
+				pointsPerDay = float64(totalPoints) / float64(totalDays-1)
+			}
 
-			for i := 0; i <= totalDays; i++ {
+			for i := 0; i < totalDays; i++ {
 				day := startDate.AddDate(0, 0, i)
 				idealBurndown = append(idealBurndown, fiber.Map{
 					"date":   day.Format("2006-01-02"),
-					"points": float64(totalPoints) - (pointsPerDay * float64(i)),
+					"points": maxFloat(0, float64(totalPoints)-(pointsPerDay*float64(i))),
+				})
+			}
+			
+			// Calculate actual burndown
+			for i := 0; i < currentDays; i++ {
+				day := startDate.AddDate(0, 0, i)
+				dayEnd := day.AddDate(0, 0, 1)
+				
+				remainingAtDay := 0
+				for _, issue := range issues {
+					points := 0
+					if issue.StoryPoints != nil {
+						points = *issue.StoryPoints
+					}
+					
+					isDone := issue.Status == "done"
+					resolvedAt := issue.ResolvedAt
+					if resolvedAt == nil && isDone {
+						resolvedAt = &issue.UpdatedAt
+					}
+					
+					// If not done yet, or done AFTER current day, it's still remaining
+					if !isDone || (resolvedAt != nil && resolvedAt.After(dayEnd)) {
+						remainingAtDay += points
+					}
+				}
+				
+				actualBurndown = append(actualBurndown, fiber.Map{
+					"date":   day.Format("2006-01-02"),
+					"points": remainingAtDay,
 				})
 			}
 		}
@@ -614,6 +656,13 @@ func (h *ReportHandler) GetTeamPerformance(c *fiber.Ctx) error {
 }
 
 func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func maxFloat(a, b float64) float64 {
 	if a > b {
 		return a
 	}

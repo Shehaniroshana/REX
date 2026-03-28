@@ -2,8 +2,10 @@ package handlers
 
 import (
 	"errors"
+	"log"
 
-	"github.com/braviz/jira-clone/internal/setup"
+	"rex-backend/internal/database"
+	"rex-backend/internal/setup"
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -18,7 +20,7 @@ func NewSetupHandler(store *setup.DBConfigStore, preconfigured bool) *SetupHandl
 
 func (h *SetupHandler) GetStatus(c *fiber.Ctx) error {
 	configured := h.preconfigured || h.store.IsConfigured()
-
+	log.Printf("🔍 Setup check: configured=%v (pre=%v, file=%v)", configured, h.preconfigured, h.store.IsConfigured())
 	return c.JSON(fiber.Map{
 		"configured": configured,
 	})
@@ -26,6 +28,7 @@ func (h *SetupHandler) GetStatus(c *fiber.Ctx) error {
 
 type saveDatabaseURLRequest struct {
 	DatabaseURL string `json:"databaseUrl"`
+	ShouldSeed  bool   `json:"shouldSeed"`
 }
 
 func (h *SetupHandler) SaveDatabaseURL(c *fiber.Ctx) error {
@@ -40,6 +43,22 @@ func (h *SetupHandler) SaveDatabaseURL(c *fiber.Ctx) error {
 
 	if err := h.store.Save(req.DatabaseURL); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// 3. Seed if requested
+	if req.ShouldSeed {
+		// We need a DB connection to seed
+		db, err := setup.GetDBConnection(req.DatabaseURL)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to connect for seeding: " + err.Error()})
+		}
+		// Run migrations first to ensure schema is ready
+		if err := database.Migrate(db); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Migration failed: " + err.Error()})
+		}
+		if err := database.Seed(db); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Seeding failed: " + err.Error()})
+		}
 	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{

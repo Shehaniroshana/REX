@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/braviz/jira-clone/internal/models"
+	"rex-backend/internal/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -75,4 +75,23 @@ func (r *ProjectRepository) GetMembers(projectID uuid.UUID) ([]models.ProjectMem
 	var members []models.ProjectMember
 	err := r.db.Preload("User").Where("project_id = ?", projectID).Find(&members).Error
 	return members, err
+}
+
+func (r *ProjectRepository) IsMember(projectID, userID uuid.UUID) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.ProjectMember{}).
+		Where("project_id = ? AND user_id = ?", projectID, userID).
+		Count(&count).Error
+	return count > 0, err
+}
+
+func (r *ProjectRepository) IncrementNextIssueNumber(tx *gorm.DB, projectID uuid.UUID) (int, error) {
+	var project models.Project
+	if err := tx.Model(&project).
+		Where("id = ?", projectID).
+		UpdateColumn("next_issue_number", gorm.Expr("next_issue_number + 1")).
+		First(&project, "id = ?", projectID).Error; err != nil {
+		return 0, err
+	}
+	return project.NextIssueNumber - 1, nil // Return current before incrementing (or handle as you prefer)
 }

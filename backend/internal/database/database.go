@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/braviz/jira-clone/internal/config"
-	"github.com/braviz/jira-clone/internal/models"
+	"rex-backend/internal/config"
+	"rex-backend/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -24,7 +24,7 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 	case "sqlite":
 		dbPath := cfg.DBPath
 		if dbPath == "" {
-			dbPath = "./jira-clone.db"
+			dbPath = "./rex.db"
 		}
 
 		if err := os.MkdirAll(filepath.Dir(dbPath), 0o755); err != nil && filepath.Dir(dbPath) != "." {
@@ -48,9 +48,10 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 			)
 		}
 
-		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Info),
-		})
+	db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+		PrepareStmt: true,
+	})
 	}
 
 	if err != nil {
@@ -64,7 +65,13 @@ func Connect(cfg *config.Config) (*gorm.DB, error) {
 func Migrate(db *gorm.DB) error {
 	log.Println("Running database migrations...")
 
-	err := db.AutoMigrate(
+	// Ensure we are using a clean session for migrations
+	tx := db.Session(&gorm.Session{
+		AllowGlobalUpdate: false,
+		PrepareStmt:       false,
+	})
+
+	err := tx.AutoMigrate(
 		&models.User{},
 		&models.Project{},
 		&models.ProjectMember{},
@@ -80,6 +87,7 @@ func Migrate(db *gorm.DB) error {
 	)
 
 	if err != nil {
+		log.Printf("❌ Migration error details: %+v", err)
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 

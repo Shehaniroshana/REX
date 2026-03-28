@@ -1,4 +1,4 @@
-module github.com/braviz/jira-clone
+module rex-backend
 
 go 1.24.0
 

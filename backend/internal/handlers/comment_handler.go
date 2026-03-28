@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"github.com/braviz/jira-clone/internal/middleware"
-	"github.com/braviz/jira-clone/internal/services"
+	"rex-backend/internal/middleware"
+	"rex-backend/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )

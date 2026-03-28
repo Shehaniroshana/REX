@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/braviz/jira-clone/internal/repository"
+	"rex-backend/internal/repository"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )

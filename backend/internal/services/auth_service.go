@@ -4,8 +4,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/braviz/jira-clone/internal/models"
-	"github.com/braviz/jira-clone/internal/repository"
+	"rex-backend/internal/middleware"
+	"rex-backend/internal/models"
+	"rex-backend/internal/repository"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
@@ -135,11 +136,14 @@ func (s *AuthService) GetUserByID(id uuid.UUID) (*models.User, error) {
 }
 
 func (s *AuthService) generateToken(user *models.User) (string, error) {
-	claims := jwt.MapClaims{
-		"userId": user.ID,
-		"email":  user.Email,
-		"role":   user.Role,
-		"exp":    time.Now().Add(time.Hour * 24).Unix(),
+	claims := middleware.Claims{
+		UserID: user.ID,
+		Email:  user.Email,
+		Role:   user.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)

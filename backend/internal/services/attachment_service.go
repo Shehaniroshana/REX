@@ -4,9 +4,10 @@ import (
 	"errors"
 	"mime/multipart"
 	"os"
+	"path/filepath"
 	"time"
 
-	"github.com/braviz/jira-clone/internal/models"
+	"rex-backend/internal/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -80,13 +81,10 @@ func (s *AttachmentService) DeleteAttachment(id, userID uuid.UUID) error {
 		return err
 	}
 
-	// Optional: Check if user has permission to delete (e.g. uploader or admin)
-
 	// Delete file from disk
-	// We need to extract the filename from the URL or store the server path
-	// storedFileName := filepath.Base(attachment.FileURL)
-	// fullPath := filepath.Join(s.uploadDir, storedFileName)
-	// os.Remove(fullPath) // Ignore error if file doesn't exist
+	storedFileName := filepath.Base(attachment.FileURL)
+	fullPath := filepath.Join(s.uploadDir, storedFileName)
+	_ = os.Remove(fullPath) // Ignore error if file doesn't exist
 
 	// Delete from DB
 	return s.db.Delete(&attachment).Error

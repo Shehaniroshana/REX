@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/braviz/jira-clone/internal/services"
+	"rex-backend/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
@@ -31,11 +31,7 @@ func (h *AttachmentHandler) Upload(c *fiber.Ctx) error {
 	}
 
 	// Get User ID from context
-	userIDStr := c.Locals("userId").(string)
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid user ID"})
-	}
+	userID := c.Locals("userId").(uuid.UUID)
 
 	// Get file from request
 	file, err := c.FormFile("file")
@@ -80,11 +76,7 @@ func (h *AttachmentHandler) Delete(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid attachment ID"})
 	}
 
-	userIDStr := c.Locals("userId").(string)
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Invalid user ID"})
-	}
+	userID := c.Locals("userId").(uuid.UUID)
 
 	if err := h.service.DeleteAttachment(id, userID); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Failed to delete attachment"})

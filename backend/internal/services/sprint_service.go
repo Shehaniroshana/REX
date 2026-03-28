@@ -5,8 +5,8 @@ import (
 	"errors"
 	"time"
 
-	"github.com/braviz/jira-clone/internal/models"
-	"github.com/braviz/jira-clone/internal/repository"
+	"rex-backend/internal/models"
+	"rex-backend/internal/repository"
 	"github.com/google/uuid"
 )
 

@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/braviz/jira-clone/internal/models"
-	"github.com/braviz/jira-clone/internal/repository"
+	"rex-backend/internal/models"
+	"rex-backend/internal/repository"
 	"github.com/google/uuid"
 )
 
@@ -74,7 +74,14 @@ func (s *ProjectService) GetAll(userID uuid.UUID) ([]models.Project, error) {
 	return s.projectRepo.GetAll(userID)
 }
 
-func (s *ProjectService) GetByID(id uuid.UUID) (*models.Project, error) {
+func (s *ProjectService) GetByID(id, userID uuid.UUID) (*models.Project, error) {
+	isMember, err := s.projectRepo.IsMember(id, userID)
+	if err != nil {
+		return nil, err
+	}
+	if !isMember {
+		return nil, errors.New("access denied: you are not a member of this project")
+	}
 	return s.projectRepo.FindByID(id)
 }
 
@@ -82,6 +89,12 @@ func (s *ProjectService) Update(id uuid.UUID, input UpdateProjectInput, userID u
 	project, err := s.projectRepo.FindByID(id)
 	if err != nil {
 		return nil, err
+	}
+
+	// Check if user is owner or admin member
+	if project.OwnerID != userID {
+		// Could also check for 'admin' role in project_members, but owner is simplest for now
+		return nil, errors.New("only project owner can update project settings")
 	}
 
 	oldData := map[string]interface{}{
@@ -130,6 +143,16 @@ func (s *ProjectService) Delete(id uuid.UUID, userID uuid.UUID) error {
 }
 
 func (s *ProjectService) AddMember(projectID, userID uuid.UUID, role string, addedBy uuid.UUID) error {
+	project, err := s.projectRepo.FindByID(projectID)
+	if err != nil {
+		return err
+	}
+
+	// Only owner can add members
+	if project.OwnerID != addedBy {
+		return errors.New("only project owner can add members")
+	}
+
 	member := &models.ProjectMember{
 		ProjectID: projectID,
 		UserID:    userID,
@@ -151,6 +174,16 @@ func (s *ProjectService) AddMember(projectID, userID uuid.UUID, role string, add
 }
 
 func (s *ProjectService) RemoveMember(projectID, userID, removedBy uuid.UUID) error {
+	project, err := s.projectRepo.FindByID(projectID)
+	if err != nil {
+		return err
+	}
+
+	// Only owner can remove members, but users can remove themselves
+	if project.OwnerID != removedBy && userID != removedBy {
+		return errors.New("only project owner can remove members")
+	}
+
 	if err := s.projectRepo.RemoveMember(projectID, userID); err != nil {
 		return err
 	}

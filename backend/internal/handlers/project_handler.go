@@ -1,8 +1,8 @@
 package handlers
 
 import (
-	"github.com/braviz/jira-clone/internal/middleware"
-	"github.com/braviz/jira-clone/internal/services"
+	"rex-backend/internal/middleware"
+	"rex-backend/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
@@ -69,7 +69,8 @@ func (h *ProjectHandler) GetByID(c *fiber.Ctx) error {
 		})
 	}
 
-	project, err := h.projectService.GetByID(id)
+	userID := c.Locals("userId").(uuid.UUID)
+	project, err := h.projectService.GetByID(id, userID)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "Project not found",
@@ -140,7 +141,8 @@ func (h *ProjectHandler) GetMembers(c *fiber.Ctx) error {
 		})
 	}
 
-	project, err := h.projectService.GetByID(id)
+	userID := c.Locals("userId").(uuid.UUID)
+	project, err := h.projectService.GetByID(id, userID)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "Project not found",

@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"github.com/braviz/jira-clone/internal/models"
+	"rex-backend/internal/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
@@ -12,6 +12,10 @@ type IssueRepository struct {
 
 func NewIssueRepository(db *gorm.DB) *IssueRepository {
 	return &IssueRepository{db: db}
+}
+
+func (r *IssueRepository) GetDB() *gorm.DB {
+	return r.db
 }
 
 func (r *IssueRepository) Create(issue *models.Issue) error {

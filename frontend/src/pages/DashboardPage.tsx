@@ -18,6 +18,7 @@ import RecentActivity from '@/components/dashboard/RecentActivity'
 import QuickActions from '@/components/dashboard/QuickActions'
 import { subDays, format, isSameDay, parseISO } from 'date-fns'
 import CreateProjectModal from '@/components/modals/CreateProjectModal'
+import QuickstartGuide from '@/components/QuickstartGuide'
 
 export default function DashboardPage() {
   const { projects, fetchProjects, createProject, isLoading } = useProjectStore()
@@ -26,6 +27,14 @@ export default function DashboardPage() {
   const navigate = useNavigate()
   const { toast } = useToast()
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showQuickstart, setShowQuickstart] = useState(() => {
+    return localStorage.getItem('rex_quickstart_shown') !== 'true'
+  })
+
+  const handleCloseQuickstart = () => {
+    setShowQuickstart(false)
+    localStorage.setItem('rex_quickstart_shown', 'true')
+  }
 
   useEffect(() => {
     fetchProjects()
@@ -110,6 +119,12 @@ export default function DashboardPage() {
   return (
     <>
       <div className="space-y-6 animate-fade-in p-2 pb-20 max-w-[1600px] mx-auto">
+      
+      {showQuickstart && (
+        <div className="mb-8">
+          <QuickstartGuide onClose={handleCloseQuickstart} />
+        </div>
+      )}
       {/* Hero Section - made slightly more compact */}
       <div className="relative overflow-hidden rounded-[2rem] glass-card p-8 text-white group shadow-2xl shadow-black/20">
         {/* Animated mesh gradient background */}

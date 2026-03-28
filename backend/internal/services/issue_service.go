@@ -3,21 +3,25 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
-	"github.com/braviz/jira-clone/internal/models"
-	"github.com/braviz/jira-clone/internal/repository"
+	"rex-backend/internal/models"
+	"rex-backend/internal/repository"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type IssueService struct {
 	issueRepo    *repository.IssueRepository
+	projectRepo  *repository.ProjectRepository
 	activityRepo *repository.ActivityRepository
 	notifService *NotificationService
 }
 
-func NewIssueService(issueRepo *repository.IssueRepository, activityRepo *repository.ActivityRepository, notifService *NotificationService) *IssueService {
+func NewIssueService(issueRepo *repository.IssueRepository, projectRepo *repository.ProjectRepository, activityRepo *repository.ActivityRepository, notifService *NotificationService) *IssueService {
 	return &IssueService{
 		issueRepo:    issueRepo,
+		projectRepo:  projectRepo,
 		activityRepo: activityRepo,
 		notifService: notifService,
 	}
@@ -48,29 +52,38 @@ type UpdateIssueInput struct {
 }
 
 func (s *IssueService) Create(input CreateIssueInput, reporterID uuid.UUID) (*models.Issue, error) {
-	// Generate issue key
-	keyNumber, err := s.issueRepo.GetNextKeyNumber(input.ProjectKey)
+	var issue *models.Issue
+	err := s.issueRepo.GetDB().Transaction(func(tx *gorm.DB) error {
+		// 1. Increment and get next key number atomically
+		keyNumber, err := s.projectRepo.IncrementNextIssueNumber(tx, input.ProjectID)
+		if err != nil {
+			return err
+		}
+		issueKey := fmt.Sprintf("%s-%d", input.ProjectKey, keyNumber)
+
+		// 2. Create the issue
+		issue = &models.Issue{
+			ProjectID:   input.ProjectID,
+			SprintID:    input.SprintID,
+			Key:         issueKey,
+			Title:       input.Title,
+			Description: input.Description,
+			Type:        input.Type,
+			Status:      "todo",
+			Priority:    input.Priority,
+			AssigneeID:  input.AssigneeID,
+			ReporterID:  reporterID,
+			StoryPoints: input.StoryPoints,
+			Position:    0,
+		}
+
+		if err := tx.Create(issue).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
 	if err != nil {
-		return nil, err
-	}
-	issueKey := fmt.Sprintf("%s-%d", input.ProjectKey, keyNumber)
-
-	issue := &models.Issue{
-		ProjectID:   input.ProjectID,
-		SprintID:    input.SprintID,
-		Key:         issueKey,
-		Title:       input.Title,
-		Description: input.Description,
-		Type:        input.Type,
-		Status:      "todo",
-		Priority:    input.Priority,
-		AssigneeID:  input.AssigneeID,
-		ReporterID:  reporterID,
-		StoryPoints: input.StoryPoints,
-		Position:    0,
-	}
-
-	if err := s.issueRepo.Create(issue); err != nil {
 		return nil, err
 	}
 
@@ -124,6 +137,14 @@ func (s *IssueService) Update(id uuid.UUID, input UpdateIssueInput, userID uuid.
 	issue.Title = input.Title
 	issue.Description = input.Description
 	issue.Type = input.Type
+	// Update ResolvedAt based on status change
+	if input.Status == "done" && issue.Status != "done" {
+		now := time.Now()
+		issue.ResolvedAt = &now
+	} else if input.Status != "done" && issue.Status == "done" {
+		issue.ResolvedAt = nil
+	}
+
 	issue.Status = input.Status
 	issue.Priority = input.Priority
 	issue.AssigneeID = input.AssigneeID
@@ -240,30 +261,37 @@ func (s *IssueService) CreateSubtask(parentIssueID uuid.UUID, title, description
 		return nil, fmt.Errorf("invalid parent issue key format")
 	}
 
-	// Generate subtask key
-	keyNumber, err := s.issueRepo.GetNextKeyNumber(projectKey)
+	var subtask *models.Issue
+	err = s.issueRepo.GetDB().Transaction(func(tx *gorm.DB) error {
+		// Generate subtask key atomically
+		keyNumber, err := s.projectRepo.IncrementNextIssueNumber(tx, parentIssue.ProjectID)
+		if err != nil {
+			return err
+		}
+		subtaskKey := fmt.Sprintf("%s-%d", projectKey, keyNumber)
+
+		subtask = &models.Issue{
+			ProjectID:     parentIssue.ProjectID,
+			ParentIssueID: &parentIssueID,
+			SprintID:      parentIssue.SprintID,
+			Key:           subtaskKey,
+			Title:         title,
+			Description:   description,
+			Type:          "subtask",
+			Status:        "todo",
+			Priority:      priority,
+			AssigneeID:    assigneeID,
+			ReporterID:    reporterID,
+			Position:      0,
+		}
+
+		if err := tx.Create(subtask).Error; err != nil {
+			return err
+		}
+		return nil
+	})
+
 	if err != nil {
-		return nil, err
-	}
-
-	subtaskKey := fmt.Sprintf("%s-%d", projectKey, keyNumber)
-
-	subtask := &models.Issue{
-		ProjectID:     parentIssue.ProjectID,
-		ParentIssueID: &parentIssueID,
-		SprintID:      parentIssue.SprintID,
-		Key:           subtaskKey,
-		Title:         title,
-		Description:   description,
-		Type:          "subtask",
-		Status:        "todo",
-		Priority:      priority,
-		AssigneeID:    assigneeID,
-		ReporterID:    reporterID,
-		Position:      0,
-	}
-
-	if err := s.issueRepo.Create(subtask); err != nil {
 		return nil, err
 	}
 
@@ -285,6 +313,14 @@ func (s *IssueService) UpdateSubtaskStatus(subtaskID uuid.UUID, status string) (
 
 	if subtask.Type != "subtask" {
 		return nil, fmt.Errorf("issue is not a subtask")
+	}
+
+	// Update ResolvedAt based on status change
+	if status == "done" && subtask.Status != "done" {
+		now := time.Now()
+		subtask.ResolvedAt = &now
+	} else if status != "done" && subtask.Status == "done" {
+		subtask.ResolvedAt = nil
 	}
 
 	subtask.Status = status

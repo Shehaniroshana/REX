@@ -11,6 +11,10 @@ const api = axios.create({
 
 // Add auth token to requests
 api.interceptors.request.use((config) => {
+    // Skip auth for setup routes
+    if (config.url?.includes('/setup')) {
+        return config
+    }
     const token = localStorage.getItem('token')
     if (token) {
         config.headers.Authorization = `Bearer ${token}`
@@ -22,9 +26,21 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
     (response) => response,
     (error) => {
+        // Skip redirect for setup routes OR base status check to avoid infinite loops
+        if (error.config?.url?.includes('/setup')) {
+            return Promise.reject(error)
+        }
+
         if (error.response?.status === 401) {
             localStorage.removeItem('token')
-            window.location.href = '/login'
+            
+            // Current location check
+            const path = window.location.hash || window.location.pathname
+            const isAuthPage = path.includes('login') || path.includes('register') || path.includes('setup')
+            
+            if (!isAuthPage) {
+                window.location.href = '#/login'
+            }
         }
         return Promise.reject(error)
     }

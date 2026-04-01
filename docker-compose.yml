@@ -3,7 +3,7 @@ version: "3.8"
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: jira_clone_db
+    container_name: rex_db
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -22,13 +22,13 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: jira_clone_backend
+    container_name: rex_backend
     environment:
       DB_HOST: postgres
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: postgres
-      DB_NAME: jira_clone
+      DB_NAME: rex_db
       JWT_SECRET: your-super-secret-jwt-key
       PORT: 8080
       FRONTEND_URL: http://localhost:5173
@@ -45,7 +45,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: jira_clone_frontend
+    container_name: rex_frontend
     environment:
       VITE_API_URL: http://localhost:8080
       VITE_WS_URL: ws://localhost:8080/ws

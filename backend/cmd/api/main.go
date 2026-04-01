@@ -154,6 +154,8 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config) {
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 	reportHandler := handlers.NewReportHandler(db)
 	issueLinkHandler := handlers.NewIssueLinkHandler(issueLinkService)
+	searchHandler := handlers.NewSearchHandler(db)
+	exportHandler := handlers.NewExportHandler(db)
 
 	// Auth routes
 	auth := api.Group("/auth")
@@ -168,6 +170,7 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config) {
 	users := protected.Group("/users")
 	users.Get("/", userHandler.GetAllUsers)
 	users.Get("/search", userHandler.SearchUsers)
+	users.Put("/me", userHandler.UpdateMe)
 	users.Get("/:id", userHandler.GetUserByID)
 
 	// Project routes
@@ -284,6 +287,12 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config) {
 	links.Post("/", issueLinkHandler.CreateLink)
 	links.Delete("/:id", issueLinkHandler.DeleteLink)
 	links.Get("/issue/:issueId", issueLinkHandler.GetIssueLinks)
+
+	// Search route
+	protected.Get("/search", searchHandler.Search)
+
+	// Export routes
+	protected.Get("/export/issues", exportHandler.ExportIssues)
 
 	// WebSocket route
 	api.Get("/ws", websocketMiddleware.New(func(c *websocketMiddleware.Conn) {

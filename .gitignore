@@ -14,6 +14,10 @@
 go.work
 vendor/
 *.log
+# compiled Go binaries at project root or backend root
+/backend/main
+/main
+
 
 # Frontend
 node_modules

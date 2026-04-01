@@ -1,11 +1,11 @@
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { DragDropContext, Droppable } from '@hello-pangea/dnd'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
   Plus, Search, CheckCircle2, Circle,
-  Target, Play, ChevronDown, ChevronRight,
+  Target, Play, ChevronDown, ChevronRight, Download,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useBacklog } from '@/hooks/useBacklog'
@@ -14,10 +14,36 @@ import { CreateIssueModal } from '@/components/issues/CreateIssueModal'
 import { CreateSprintModal } from '@/components/sprints/CreateSprintModal'
 import IssueDetailModal from '@/components/IssueDetailModal'
 import type { Sprint } from '@/types'
+import api from '@/lib/api'
+import { useToast } from '@/hooks/use-toast'
 
 export default function BacklogPage() {
   const navigate = useNavigate()
+  const { projectId } = useParams<{ projectId: string }>()
   const bl = useBacklog()
+  const { toast } = useToast()
+
+  const handleExport = async () => {
+    if (!projectId) return
+    try {
+      const response = await api.get('/api/export/issues', {
+        params: { projectId },
+        responseType: 'blob',
+      })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      const disposition = response.headers['content-disposition'] as string | undefined
+      const filename = disposition?.match(/filename="?([^"]+)"?/)?.[1] ?? 'issues.csv'
+      link.setAttribute('download', filename)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      toast({ title: 'Export failed', description: 'Could not download issues CSV.' })
+    }
+  }
 
   return (
     <DragDropContext onDragEnd={bl.onDragEnd}>
@@ -58,6 +84,15 @@ export default function BacklogPage() {
             >
               <Plus className="w-4 h-4 mr-2" />
               Create Sprint
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleExport}
+              className="border-slate-700 hover:bg-slate-800 text-slate-300 hover:text-white"
+              title="Export issues as CSV"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
             </Button>
             <Button className="btn-neon" onClick={() => navigate(`/projects/${bl.projectId}/board`)}>
               <Target className="w-4 h-4 mr-2" />

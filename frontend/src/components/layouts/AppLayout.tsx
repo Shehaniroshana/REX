@@ -14,6 +14,8 @@ import { wsService } from '@/services/websocketService'
 import NotificationDropdown from '@/components/NotificationDropdown'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import SpaceBackground from '@/components/three/SpaceBackground'
+import GlobalSearch from '@/components/GlobalSearch'
+import EditProfileModal from '@/components/modals/EditProfileModal'
 
 export default function AppLayout() {
   const { user, logout } = useAuthStore()
@@ -22,6 +24,7 @@ export default function AppLayout() {
   const location = useLocation()
   const { projectId } = useParams()
   const [showProjectMenu, setShowProjectMenu] = useState(false)
+  const [showEditProfile, setShowEditProfile] = useState(false)
 
   useEffect(() => {
     fetchProjects()
@@ -65,6 +68,9 @@ export default function AppLayout() {
 
         {/* Navigation Section */}
         <div className="flex-1 overflow-y-auto px-4 py-2 space-y-6 scrollbar-thin">
+
+          {/* Global Search */}
+          <GlobalSearch />
 
           {/* Main Menu */}
           <div className="space-y-1">
@@ -201,21 +207,25 @@ export default function AppLayout() {
           </div>
 
           {user && (
-            <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50">
+            <button
+              onClick={() => setShowEditProfile(true)}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-slate-800/50 border border-slate-700/50 hover:border-cyan-500/30 hover:bg-slate-800 transition-colors group text-left"
+              title="Edit profile"
+            >
               <Avatar className="w-8 h-8 ring-2 ring-cyan-500/20">
                 <AvatarFallback className="bg-gradient-to-br from-cyan-500 to-blue-600 text-white text-xs font-bold">
                   {getInitials(user.firstName, user.lastName)}
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
+                <p className="text-sm font-medium text-white truncate group-hover:text-cyan-400 transition-colors">
                   {user.firstName}
                 </p>
                 <p className="text-xs text-cyan-400 font-medium truncate capitalize">
                   {user.role}
                 </p>
               </div>
-            </div>
+            </button>
           )}
         </div>
       </aside>
@@ -229,6 +239,13 @@ export default function AppLayout() {
           <Outlet />
         </div>
       </main>
+
+      {showEditProfile && (
+        <EditProfileModal
+          isOpen={showEditProfile}
+          onClose={() => setShowEditProfile(false)}
+        />
+      )}
     </div>
   )
 }

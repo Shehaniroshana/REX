@@ -3,10 +3,10 @@ package handlers
 import (
 	"time"
 
-	"rex-backend/internal/models"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"rex-backend/internal/models"
 )
 
 type ReportHandler struct {
@@ -350,14 +350,19 @@ func (h *ReportHandler) GetComprehensiveStats(c *fiber.Ctx) error {
 			COUNT(CASE WHEN i.status = 'in_progress' THEN 1 END) as in_progress_count,
 			COALESCE(SUM(i.story_points), 0) as total_points,
 			COALESCE(SUM(CASE WHEN i.status = 'done' THEN i.story_points ELSE 0 END), 0) as completed_points,
-			COALESCE(SUM(i.time_spent), 0) as time_logged
+			COALESCE((
+				SELECT SUM(wl.time_spent) 
+				FROM work_logs wl 
+				INNER JOIN issues wi ON wi.id = wl.issue_id 
+				WHERE wl.user_id = u.id AND wi.project_id = ?
+			), 0) as time_logged
 		FROM users u
 		INNER JOIN project_members pm ON pm.user_id = u.id
 		LEFT JOIN issues i ON i.assignee_id = u.id AND i.project_id = ?
 		WHERE pm.project_id = ?
 		GROUP BY u.id, u.first_name, u.last_name, u.email, u.avatar
 		ORDER BY completed_issues DESC
-	`, projectID, projectID).Scan(&teamStats)
+	`, projectID, projectID, projectID).Scan(&teamStats)
 	stats.TeamStats = teamStats
 
 	// ============ SPRINT STATS ============
@@ -509,13 +514,13 @@ func (h *ReportHandler) GetBurnDown(c *fiber.Ctx) error {
 	if sprint.StartDate != nil && sprint.EndDate != nil {
 		startDate := *sprint.StartDate
 		endDate := *sprint.EndDate
-		
+
 		// If sprint is active/planned, set end relative to now if it's earlier than planned end
 		displayEnd := endDate
 		if sprint.Status != "completed" && time.Now().Before(endDate) {
 			displayEnd = time.Now()
 		}
-		
+
 		totalDays := int(endDate.Sub(startDate).Hours()/24) + 1
 		currentDays := int(displayEnd.Sub(startDate).Hours()/24) + 1
 
@@ -532,31 +537,31 @@ func (h *ReportHandler) GetBurnDown(c *fiber.Ctx) error {
 					"points": maxFloat(0, float64(totalPoints)-(pointsPerDay*float64(i))),
 				})
 			}
-			
+
 			// Calculate actual burndown
 			for i := 0; i < currentDays; i++ {
 				day := startDate.AddDate(0, 0, i)
 				dayEnd := day.AddDate(0, 0, 1)
-				
+
 				remainingAtDay := 0
 				for _, issue := range issues {
 					points := 0
 					if issue.StoryPoints != nil {
 						points = *issue.StoryPoints
 					}
-					
+
 					isDone := issue.Status == "done"
 					resolvedAt := issue.ResolvedAt
 					if resolvedAt == nil && isDone {
 						resolvedAt = &issue.UpdatedAt
 					}
-					
+
 					// If not done yet, or done AFTER current day, it's still remaining
 					if !isDone || (resolvedAt != nil && resolvedAt.After(dayEnd)) {
 						remainingAtDay += points
 					}
 				}
-				
+
 				actualBurndown = append(actualBurndown, fiber.Map{
 					"date":   day.Format("2006-01-02"),
 					"points": remainingAtDay,

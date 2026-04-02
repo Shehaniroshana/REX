@@ -2,12 +2,13 @@
 import { Outlet, Link, useNavigate, useLocation, useParams } from 'react-router-dom'
 import { useAuthStore } from '@/store/authStore'
 import { useProjectStore } from '@/store/projectStore'
+import { useOrgStore } from '@/store/orgStore'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { getInitials } from '@/lib/utils'
 import {
   LogOut, LayoutDashboard,
   ChevronDown,
-  List, Zap, Shield, TrendingUp, Settings
+  List, Zap, TrendingUp, Settings, Building2
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { wsService } from '@/services/websocketService'
@@ -24,8 +25,10 @@ export default function AppLayout() {
   const { projectId } = useParams()
   const [showProjectMenu, setShowProjectMenu] = useState(false)
 
+  const { fetchOrgs } = useOrgStore()
+
   useEffect(() => {
-    fetchProjects()
+    fetchOrgs().then(() => fetchProjects())
   }, [])
 
   useEffect(() => {
@@ -85,18 +88,17 @@ export default function AppLayout() {
               Dashboard
             </Link>
 
-            {user?.role === 'admin' && (
-              <Link
-                to="/admin"
-                className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname === '/admin'
-                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30 font-semibold'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
-              >
-                <Shield className={`w-4 h-4 ${location.pathname === '/admin' ? 'text-purple-400' : 'text-slate-500 group-hover:text-white'}`} />
-                Admin
-              </Link>
-            )}
+            <Link
+              to="/orgs"
+              className={`flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-xl transition-all duration-300 group ${location.pathname.startsWith('/orgs')
+                ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.3)] font-bold'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
+            >
+              <Building2 className={`w-4 h-4 ${location.pathname.startsWith('/orgs') ? 'text-cyan-400' : 'text-slate-500 group-hover:text-white'}`} />
+              Organizations
+            </Link>
+
           </div>
 
           {/* Project Section */}

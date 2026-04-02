@@ -4,9 +4,9 @@ import (
 	"errors"
 	"time"
 
+	"github.com/google/uuid"
 	"rex-backend/internal/models"
 	"rex-backend/internal/repository"
-	"github.com/google/uuid"
 )
 
 type WorkLogService struct {
@@ -142,7 +142,13 @@ func (s *WorkLogService) GetRemainingTime(issueID uuid.UUID) (int, error) {
 		return 0, errors.New("issue not found")
 	}
 
-	remaining := issue.EstimatedTime - issue.TimeSpent
+	// Calculate actual time spent from work logs, not from the cached field
+	totalTimeSpent, err := s.workLogRepo.GetTotalTimeSpentByIssue(issueID)
+	if err != nil {
+		return 0, err
+	}
+
+	remaining := issue.EstimatedTime - totalTimeSpent
 	if remaining < 0 {
 		remaining = 0
 	}

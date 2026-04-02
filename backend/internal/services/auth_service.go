@@ -15,12 +15,14 @@ import (
 
 type AuthService struct {
 	userRepo  *repository.UserRepository
+	orgRepo   *repository.OrganizationRepository
 	jwtSecret string
 }
 
-func NewAuthService(userRepo *repository.UserRepository, jwtSecret string) *AuthService {
+func NewAuthService(userRepo *repository.UserRepository, orgRepo *repository.OrganizationRepository, jwtSecret string) *AuthService {
 	return &AuthService{
 		userRepo:  userRepo,
+		orgRepo:   orgRepo,
 		jwtSecret: jwtSecret,
 	}
 }
@@ -30,11 +32,20 @@ type RegisterInput struct {
 	Password  string `json:"password"`
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
+	OrganizationName string `json:"organizationName"`
 }
 
 type LoginInput struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
+}
+
+type CreateOrganizationUserInput struct {
+	Email     string `json:"email"`
+	Password  string `json:"password"`
+	FirstName string `json:"firstName"`
+	LastName  string `json:"lastName"`
+	Role      string `json:"role"`
 }
 
 type AuthResponse struct {
@@ -55,20 +66,13 @@ func (s *AuthService) Register(input RegisterInput) (*AuthResponse, error) {
 		return nil, err
 	}
 
-	// Determine role
-	role := "user"
-	var userCount int64
-	if err := s.userRepo.Count(&userCount); err == nil && userCount == 0 {
-		role = "admin"
-	}
-
-	// Create user
 	user := &models.User{
+		ID:        uuid.New(),
 		Email:     input.Email,
 		Password:  string(hashedPassword),
 		FirstName: input.FirstName,
 		LastName:  input.LastName,
-		Role:      role,
+		Role:      "user",
 		IsActive:  true,
 	}
 
@@ -76,19 +80,13 @@ func (s *AuthService) Register(input RegisterInput) (*AuthResponse, error) {
 		return nil, err
 	}
 
-	// Generate token
 	token, err := s.generateToken(user)
 	if err != nil {
 		return nil, err
 	}
 
-	// Clear password before returning
 	user.Password = ""
-
-	return &AuthResponse{
-		Token: token,
-		User:  user,
-	}, nil
+	return &AuthResponse{Token: token, User: user}, nil
 }
 
 func (s *AuthService) Login(input LoginInput) (*AuthResponse, error) {
@@ -135,11 +133,47 @@ func (s *AuthService) GetUserByID(id uuid.UUID) (*models.User, error) {
 	return user, nil
 }
 
+func (s *AuthService) CreateOrganizationUser(orgID uuid.UUID, input CreateOrganizationUserInput) (*models.User, error) {
+	existingUser, err := s.userRepo.FindByEmail(input.Email)
+	if err == nil && existingUser != nil {
+		return nil, errors.New("user with this email already exists")
+	}
+
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, err
+	}
+
+	role := input.Role
+	if role == "" {
+		role = "user"
+	}
+	if role != "admin" && role != "manager" && role != "user" {
+		return nil, errors.New("invalid role")
+	}
+
+	user := &models.User{
+		Email:          input.Email,
+		Password:       string(hashedPassword),
+		FirstName:      input.FirstName,
+		LastName:       input.LastName,
+		Role:           role,
+		IsActive:       true,
+	}
+
+	if err := s.userRepo.Create(user); err != nil {
+		return nil, err
+	}
+
+	user.Password = ""
+	return user, nil
+}
+
 func (s *AuthService) generateToken(user *models.User) (string, error) {
 	claims := middleware.Claims{
-		UserID: user.ID,
-		Email:  user.Email,
-		Role:   user.Role,
+		UserID:         user.ID,
+		Email:          user.Email,
+		Role:           user.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour * 24)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

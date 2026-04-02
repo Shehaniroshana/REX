@@ -18,6 +18,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/gofiber/fiber/v2/middleware/recover"
 	websocketMiddleware "github.com/gofiber/websocket/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
@@ -122,8 +123,23 @@ func main() {
 			c.Close()
 			return
 		}
+
+		// Validate token at handshake time to prevent unauthenticated socket sessions.
+		parsedToken, err := jwt.ParseWithClaims(token, &middleware.Claims{}, func(token *jwt.Token) (interface{}, error) {
+			return []byte(cfg.JWTSecret), nil
+		})
+		if err != nil || !parsedToken.Valid {
+			log.Printf("WebSocket: Invalid token: %v", err)
+			c.WriteMessage(websocketMiddleware.TextMessage, []byte(`{"type":"error","data":{"message":"Invalid or expired token"}}`))
+			c.Close()
+			return
+		}
+
 		log.Println("WebSocket: Token received, establishing connection")
-		websocket.HandleConnection(hub, c, token)
+		websocket.HandleConnection(hub, c, token, cfg.JWTSecret)
+	}, websocketMiddleware.Config{
+		// Allow dev browser + Electron origins for WS upgrades.
+		Origins: []string{"*"},
 	}))
 
 	// Health check (always available) — frontend can poll this after restart
@@ -156,6 +172,7 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config, hub *websoc
 	// Initialize repositories
 	userRepo := repository.NewUserRepository(db)
 	projectRepo := repository.NewProjectRepository(db)
+	organizationRepo := repository.NewOrganizationRepository(db)
 	issueRepo := repository.NewIssueRepository(db)
 	sprintRepo := repository.NewSprintRepository(db)
 	commentRepo := repository.NewCommentRepository(db)
@@ -167,8 +184,8 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config, hub *websoc
 	// Notification service uses the shared hub
 
 	// Initialize services
-	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
-	projectService := services.NewProjectService(projectRepo, activityRepo)
+	authService := services.NewAuthService(userRepo, organizationRepo, cfg.JWTSecret)
+	projectService := services.NewProjectService(projectRepo, activityRepo, organizationRepo)
 	notificationService := services.NewNotificationService(notificationRepo, hub)
 	issueService := services.NewIssueService(issueRepo, projectRepo, activityRepo, notificationService)
 	sprintService := services.NewSprintService(sprintRepo, activityRepo, issueRepo)
@@ -187,13 +204,15 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config, hub *websoc
 	commentHandler := handlers.NewCommentHandler(commentService)
 	labelHandler := handlers.NewLabelHandler(labelService)
 	workLogHandler := handlers.NewWorkLogHandler(workLogService)
-	adminHandler := handlers.NewAdminHandler(userRepo, projectRepo, authService)
 	subtaskHandler := handlers.NewSubtaskHandler(issueService)
 	attachmentHandler := handlers.NewAttachmentHandler(attachmentService, "./uploads")
 	activityHandler := handlers.NewActivityHandler(db)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 	reportHandler := handlers.NewReportHandler(db)
 	issueLinkHandler := handlers.NewIssueLinkHandler(issueLinkService)
+	organizationService := services.NewOrganizationService(organizationRepo, userRepo)
+	organizationHandler := handlers.NewOrganizationHandler(organizationService)
+	adminHandler := handlers.NewAdminHandler(userRepo, projectRepo, authService)
 
 	// Auth routes
 	auth := api.Group("/auth")
@@ -210,8 +229,27 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config, hub *websoc
 	users.Get("/search", userHandler.SearchUsers)
 	users.Get("/:id", userHandler.GetUserByID)
 
-	// Project routes
-	projects := protected.Group("/projects")
+	// Organization top-level routes and global org routes
+	orgs := protected.Group("/orgs")
+	orgs.Get("/", organizationHandler.GetMyOrgs)
+	orgs.Post("/", organizationHandler.CreateOrg)
+	orgs.Post("/join", organizationHandler.JoinByInviteCode)
+
+	// Organization scoped routes
+	orgScoped := orgs.Group("/:orgId", middleware.OrgMemberMiddleware(organizationRepo))
+	orgScoped.Get("/", organizationHandler.GetOrg)
+	orgScoped.Patch("/", middleware.OrgAdminMiddleware(), organizationHandler.UpdateOrg)
+	orgScoped.Delete("/", middleware.OrgAdminMiddleware(), organizationHandler.DeleteOrg)
+
+	// Organization Members
+	orgScoped.Get("/members", organizationHandler.GetMembers)
+	orgScoped.Post("/members", middleware.OrgAdminMiddleware(), organizationHandler.InviteMember)
+	orgScoped.Patch("/members/:userId", middleware.OrgAdminMiddleware(), organizationHandler.UpdateMemberRole)
+	orgScoped.Delete("/members/:userId", organizationHandler.RemoveMember)
+	orgScoped.Post("/invite-code/regenerate", middleware.OrgAdminMiddleware(), organizationHandler.RegenerateInviteCode)
+
+	// Project routes (scoped under organization for multi-tenant support)
+	projects := orgScoped.Group("/projects")
 	projects.Get("/", projectHandler.GetAll)
 	projects.Post("/", projectHandler.Create)
 	projects.Get("/:id", projectHandler.GetByID)
@@ -270,22 +308,6 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config, hub *websoc
 	worklogs.Get("/issue/:issueId/total", workLogHandler.GetTotalTimeSpent)
 	worklogs.Get("/issue/:issueId/remaining", workLogHandler.GetRemainingTime)
 
-	// Admin routes
-	admin := protected.Group("/admin")
-	admin.Get("/users", adminHandler.GetAllUsers)
-	admin.Post("/users", adminHandler.CreateUser)
-	admin.Put("/users/:id", adminHandler.UpdateUser)
-	admin.Put("/users/:id/role", adminHandler.UpdateUserRole)
-	admin.Put("/users/:id/password", adminHandler.ResetUserPassword)
-	admin.Post("/users/:id/toggle-status", adminHandler.ToggleUserStatus)
-	admin.Delete("/users/:id", adminHandler.DeleteUser)
-	admin.Get("/stats/users", adminHandler.GetUserStats)
-	admin.Get("/projects", adminHandler.GetAllProjects)
-	admin.Post("/projects", adminHandler.CreateProject)
-	admin.Put("/projects/:id", adminHandler.UpdateProject)
-	admin.Get("/stats/projects", adminHandler.GetProjectStats)
-	admin.Delete("/projects/:id", adminHandler.DeleteProject)
-
 	// Subtask routes
 	subtasks := protected.Group("/subtasks")
 	subtasks.Get("/issue/:issueId", subtaskHandler.GetSubtasks)
@@ -324,6 +346,22 @@ func setupFullAPI(api fiber.Router, db *gorm.DB, cfg *config.Config, hub *websoc
 	links.Post("/", issueLinkHandler.CreateLink)
 	links.Delete("/:id", issueLinkHandler.DeleteLink)
 	links.Get("/issue/:issueId", issueLinkHandler.GetIssueLinks)
+
+	// Admin routes (for system administrators)
+	admin := protected.Group("/admin")
+	admin.Get("/users", adminHandler.GetAllUsers)
+	admin.Post("/users", adminHandler.CreateUser)
+	admin.Put("/users/:id", adminHandler.UpdateUser)
+	admin.Put("/users/:id/role", adminHandler.UpdateUserRole)
+	admin.Put("/users/:id/password", adminHandler.ResetUserPassword)
+	admin.Post("/users/:id/toggle-status", adminHandler.ToggleUserStatus)
+	admin.Delete("/users/:id", adminHandler.DeleteUser)
+	admin.Get("/stats/users", adminHandler.GetUserStats)
+	admin.Get("/projects", adminHandler.GetAllProjects)
+	admin.Post("/projects", adminHandler.CreateProject)
+	admin.Put("/projects/:id", adminHandler.UpdateProject)
+	admin.Delete("/projects/:id", adminHandler.DeleteProject)
+	admin.Get("/stats/projects", adminHandler.GetProjectStats)
 
 	// Workspace routes...
 }

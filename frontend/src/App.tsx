@@ -15,10 +15,10 @@ import BoardPage from '@/pages/BoardPage'
 import BacklogPage from '@/pages/BacklogPage'
 import ReportsPage from '@/pages/ReportsPage'
 import IssueDetailPage from '@/pages/IssueDetailPage'
-import AdminPage from '@/pages/AdminPage'
 import SprintManagementPage from '@/pages/SprintManagementPage'
 import ProjectSettingsPage from '@/pages/ProjectSettingsPage'
-
+import OrganizationsPage from '@/pages/orgs/OrganizationsPage'
+import OrgSettingsPage from '@/pages/orgs/OrgSettingsPage'
 // Layouts
 import AuthLayout from '@/components/layouts/AuthLayout'
 import AppLayout from '@/components/layouts/AppLayout'
@@ -135,7 +135,8 @@ function CallClone() {
             <Route path="/projects/:projectId/sprints" element={<SprintManagementPage />} />
             <Route path="/projects/:projectId/settings" element={<ProjectSettingsPage />} />
             <Route path="/projects/:projectId/issues/:issueId" element={<IssueDetailPage />} />
-            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/orgs" element={<OrganizationsPage />} />
+            <Route path="/orgs/:orgId/settings" element={<OrgSettingsPage />} />
           </Route>
 
           {/* Catch all */}

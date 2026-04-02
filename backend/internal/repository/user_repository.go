@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"rex-backend/internal/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"rex-backend/internal/models"
 )
 
 type UserRepository struct {

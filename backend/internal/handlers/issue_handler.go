@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"rex-backend/internal/middleware"
-	"rex-backend/internal/services"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"rex-backend/internal/middleware"
+	"rex-backend/internal/services"
 )
 
 type IssueHandler struct {
@@ -131,4 +131,37 @@ func (h *IssueHandler) Delete(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusNoContent).Send(nil)
+}
+
+func (h *IssueHandler) UpdatePosition(c *fiber.Ctx) error {
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid issue ID",
+		})
+	}
+
+	var input struct {
+		Position int `json:"position"`
+	}
+	if err := c.BodyParser(&input); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request body",
+		})
+	}
+
+	if err := h.issueService.UpdatePosition(id, input.Position, userID); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"message": "Position updated successfully",
+	})
 }

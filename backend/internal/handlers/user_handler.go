@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"rex-backend/internal/models"
 	"rex-backend/internal/repository"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -16,7 +17,7 @@ func NewUserHandler(userRepo *repository.UserRepository) *UserHandler {
 	}
 }
 
-// GetAllUsers returns all users (for user selection dropdowns)
+// GetAllUsers returns all users (for global user selection dropdowns)
 func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 	users, err := h.userRepo.FindAll()
 	if err != nil {
@@ -24,7 +25,6 @@ func (h *UserHandler) GetAllUsers(c *fiber.Ctx) error {
 			"error": "Failed to fetch users",
 		})
 	}
-
 	return c.JSON(users)
 }
 
@@ -43,20 +43,21 @@ func (h *UserHandler) GetUserByID(c *fiber.Ctx) error {
 			"error": "User not found",
 		})
 	}
-
 	return c.JSON(user)
 }
 
 // SearchUsers searches users by email or name
 func (h *UserHandler) SearchUsers(c *fiber.Ctx) error {
 	query := c.Query("q")
-
 	users, err := h.userRepo.Search(query)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to search users",
 		})
 	}
-
 	return c.JSON(users)
+}
+
+func (h *UserHandler) GetAllModelUsers() ([]models.User, error) {
+	return h.userRepo.FindAll()
 }

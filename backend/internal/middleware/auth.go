@@ -9,9 +9,9 @@ import (
 )
 
 type Claims struct {
-	UserID uuid.UUID `json:"userId"`
-	Email  string    `json:"email"`
-	Role   string    `json:"role"`
+	UserID         uuid.UUID `json:"userId"`
+	Email          string    `json:"email"`
+	Role           string    `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -19,7 +19,7 @@ func Protected(jwtSecret string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		// Bypass for setup and health checks
 		path := c.Path()
-		if strings.Contains(path, "/setup") || strings.Contains(path, "/health") {
+		if strings.Contains(path, "/setup") || strings.Contains(path, "/health") || path == "/api/ws" {
 			return c.Next()
 		}
 
@@ -75,3 +75,5 @@ func GetUserID(c *fiber.Ctx) (uuid.UUID, error) {
 	}
 	return userID.(uuid.UUID), nil
 }
+
+

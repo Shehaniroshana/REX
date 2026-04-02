@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { Project, CreateProjectInput, UpdateProjectInput } from '@/types'
 import { projectService } from '@/services/projectService'
+import { useOrgStore } from './orgStore'
 
 interface ProjectState {
     projects: Project[]
@@ -24,9 +25,12 @@ export const useProjectStore = create<ProjectState>((set) => ({
     error: null,
 
     fetchProjects: async () => {
+        const orgId = useOrgStore.getState().currentOrgId
+        if (!orgId) return
+
         set({ isLoading: true, error: null })
         try {
-            const projects = await projectService.getAll()
+            const projects = await projectService.getAll(orgId)
             set({ projects, isLoading: false })
         } catch (error: any) {
             set({ error: error.message, isLoading: false })
@@ -34,19 +38,25 @@ export const useProjectStore = create<ProjectState>((set) => ({
     },
 
     fetchProject: async (id: string) => {
+        const orgId = useOrgStore.getState().currentOrgId
+        if (!orgId) return
+
         set({ isLoading: true, error: null })
         try {
-            const project = await projectService.getById(id)
+            const project = await projectService.getById(orgId, id)
             set({ currentProject: project, isLoading: false })
         } catch (error: any) {
             set({ error: error.message, isLoading: false })
         }
     },
 
-    createProject: async (data: CreateProjectInput) => {
+    createProject: async (data: Omit<CreateProjectInput, 'ownerId'>) => {
+        const orgId = useOrgStore.getState().currentOrgId
+        if (!orgId) throw new Error('No active organization')
+
         set({ isLoading: true, error: null })
         try {
-            const project = await projectService.create(data)
+            const project = await projectService.create(orgId, data)
             set((state) => ({
                 projects: [...state.projects, project],
                 isLoading: false,
@@ -59,9 +69,12 @@ export const useProjectStore = create<ProjectState>((set) => ({
     },
 
     updateProject: async (id: string, data: UpdateProjectInput) => {
+        const orgId = useOrgStore.getState().currentOrgId
+        if (!orgId) throw new Error('No active organization')
+
         set({ isLoading: true, error: null })
         try {
-            const project = await projectService.update(id, data)
+            const project = await projectService.update(orgId, id, data)
             set((state) => ({
                 projects: state.projects.map((p) => (p.id === id ? project : p)),
                 currentProject: state.currentProject?.id === id ? project : state.currentProject,
@@ -74,9 +87,12 @@ export const useProjectStore = create<ProjectState>((set) => ({
     },
 
     deleteProject: async (id: string) => {
+        const orgId = useOrgStore.getState().currentOrgId
+        if (!orgId) throw new Error('No active organization')
+
         set({ isLoading: true, error: null })
         try {
-            await projectService.delete(id)
+            await projectService.delete(orgId, id)
             set((state) => ({
                 projects: state.projects.filter((p) => p.id !== id),
                 currentProject: state.currentProject?.id === id ? null : state.currentProject,
@@ -93,10 +109,13 @@ export const useProjectStore = create<ProjectState>((set) => ({
     },
 
     addMember: async (projectId: string, userId: string, role: string = 'member') => {
+        const orgId = useOrgStore.getState().currentOrgId
+        if (!orgId) throw new Error('No active organization')
+
         set({ isLoading: true, error: null })
         try {
-            await projectService.addMember(projectId, userId, role)
-            const project = await projectService.getById(projectId)
+            await projectService.addMember(orgId, projectId, userId, role)
+            const project = await projectService.getById(orgId, projectId)
             set((state) => ({
                 projects: state.projects.map((p) => (p.id === projectId ? project : p)),
                 currentProject: state.currentProject?.id === projectId ? project : state.currentProject,
@@ -109,10 +128,13 @@ export const useProjectStore = create<ProjectState>((set) => ({
     },
 
     removeMember: async (projectId: string, userId: string) => {
+        const orgId = useOrgStore.getState().currentOrgId
+        if (!orgId) throw new Error('No active organization')
+
         set({ isLoading: true, error: null })
         try {
-            await projectService.removeMember(projectId, userId)
-            const project = await projectService.getById(projectId)
+            await projectService.removeMember(orgId, projectId, userId)
+            const project = await projectService.getById(orgId, projectId)
             set((state) => ({
                 projects: state.projects.map((p) => (p.id === projectId ? project : p)),
                 currentProject: state.currentProject?.id === projectId ? project : state.currentProject,

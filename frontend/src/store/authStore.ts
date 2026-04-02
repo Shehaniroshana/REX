@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { User, AuthResponse, LoginInput, RegisterInput } from '@/types'
 import { authService } from '@/services/authService'
+import { useOrgStore } from './orgStore'
 
 interface AuthState {
     user: User | null
@@ -12,6 +13,7 @@ interface AuthState {
     register: (data: RegisterInput) => Promise<void>
     logout: () => void
     fetchUser: () => Promise<void>
+    setAuth: (response: AuthResponse) => void
     setError: (error: string | null) => void
 }
 
@@ -29,6 +31,12 @@ export const useAuthStore = create<AuthState>()(
                     const response: AuthResponse = await authService.login(data)
                     localStorage.setItem('token', response.token)
                     set({ user: response.user, token: response.token, isLoading: false })
+                    
+                    // Sync organizations
+                    useOrgStore.setState({ 
+                        orgs: response.orgs,
+                        currentOrgId: response.orgs.length > 0 ? response.orgs[0].id : null 
+                    })
                 } catch (error: any) {
                     const errorMessage = error.response?.data?.error || 'Login failed'
                     set({ error: errorMessage, isLoading: false })
@@ -42,6 +50,12 @@ export const useAuthStore = create<AuthState>()(
                     const response: AuthResponse = await authService.register(data)
                     localStorage.setItem('token', response.token)
                     set({ user: response.user, token: response.token, isLoading: false })
+                    
+                    // Sync organizations
+                    useOrgStore.setState({ 
+                        orgs: response.orgs,
+                        currentOrgId: response.orgs.length > 0 ? response.orgs[0].id : null 
+                    })
                 } catch (error: any) {
                     const errorMessage = error.response?.data?.error || 'Registration failed'
                     set({ error: errorMessage, isLoading: false })
@@ -52,6 +66,7 @@ export const useAuthStore = create<AuthState>()(
             logout: () => {
                 localStorage.removeItem('token')
                 set({ user: null, token: null })
+                useOrgStore.setState({ orgs: [], currentOrgId: null })
             },
 
             fetchUser: async () => {
@@ -62,10 +77,17 @@ export const useAuthStore = create<AuthState>()(
                 try {
                     const user = await authService.getMe()
                     set({ user, isLoading: false })
+                    // Keep orgs in sync after refresh
+                    await useOrgStore.getState().fetchOrgs()
                 } catch (error) {
                     set({ isLoading: false })
                     get().logout()
                 }
+            },
+
+            setAuth: (response: AuthResponse) => {
+                localStorage.setItem('token', response.token)
+                set({ user: response.user, token: response.token })
             },
 
             setError: (error: string | null) => {

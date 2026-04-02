@@ -1,9 +1,9 @@
 package repository
 
 import (
-	"rex-backend/internal/models"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
+	"rex-backend/internal/models"
 )
 
 type ProjectRepository struct {
@@ -21,9 +21,26 @@ func (r *ProjectRepository) Create(project *models.Project) error {
 func (r *ProjectRepository) FindByID(id uuid.UUID) (*models.Project, error) {
 	var project models.Project
 	err := r.db.
+		Preload("Organization").
 		Preload("Owner").
 		Preload("Members.User").
 		First(&project, "id = ?", id).Error
+	return &project, err
+}
+
+func (r *ProjectRepository) FindByIDAndOrganization(id, organizationID uuid.UUID) (*models.Project, error) {
+	var project models.Project
+	err := r.db.
+		Preload("Organization").
+		Preload("Owner").
+		Preload("Members.User").
+		First(&project, "id = ? AND organization_id = ?", id, organizationID).Error
+	return &project, err
+}
+
+func (r *ProjectRepository) FindByKeyInOrganization(key string, organizationID uuid.UUID) (*models.Project, error) {
+	var project models.Project
+	err := r.db.Where("key = ? AND organization_id = ?", key, organizationID).First(&project).Error
 	return &project, err
 }
 
@@ -33,15 +50,14 @@ func (r *ProjectRepository) FindByKey(key string) (*models.Project, error) {
 	return &project, err
 }
 
-func (r *ProjectRepository) GetAll(userID uuid.UUID) ([]models.Project, error) {
+func (r *ProjectRepository) GetAllByOrganization(userID, organizationID uuid.UUID) ([]models.Project, error) {
 	var projects []models.Project
+	// Return ALL projects in the organization - any organization member can view all org projects
 	err := r.db.
+		Preload("Organization").
 		Preload("Owner").
 		Preload("Members").
-		Where("owner_id = ? OR id IN (?)",
-			userID,
-			r.db.Table("project_members").Select("project_id").Where("user_id = ?", userID),
-		).
+		Where("organization_id = ?", organizationID).
 		Find(&projects).Error
 	return projects, err
 }
@@ -49,6 +65,7 @@ func (r *ProjectRepository) GetAll(userID uuid.UUID) ([]models.Project, error) {
 func (r *ProjectRepository) FindAll() ([]models.Project, error) {
 	var projects []models.Project
 	err := r.db.
+		Preload("Organization").
 		Preload("Owner").
 		Preload("Members.User").
 		Find(&projects).Error

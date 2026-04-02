@@ -19,6 +19,9 @@ class WebSocketService {
     private WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/api/ws'
     private eventListeners: Map<string, Set<(data: any) => void>> = new Map()
     private reconnectTimeout: ReturnType<typeof setTimeout> | null = null
+    private manualDisconnect = false
+    private wsCandidates: string[] = []
+    private currentCandidateIndex = 0
 
     // Support dynamic override from Electron preload
     setWsUrl(url: string) {
@@ -30,6 +33,8 @@ class WebSocketService {
     }
 
     connect() {
+        this.manualDisconnect = false
+
         const { token } = useAuthStore.getState()
         if (!token) {
             console.warn('WebSocket: No token available')
@@ -42,37 +47,113 @@ class WebSocketService {
         }
 
         try {
-            // Connect with token in query parameter
-            this.ws = new WebSocket(`${this.WS_URL}?token=${token}`)
-
-            this.ws.onopen = () => {
-                console.log('WebSocket connected')
-                this.reconnectAttempts = 0
-                this.dispatchEvent('connect', { message: 'Connected to WebSocket' })
-            }
-
-            this.ws.onmessage = (event) => {
-                try {
-                    const message: Message = JSON.parse(event.data)
-                    console.log('WebSocket message received:', message)
-                    this.dispatchEvent(message.type, message.data)
-                } catch (error) {
-                    console.error('Failed to parse WebSocket message:', error)
-                }
-            }
-
-            this.ws.onerror = (error) => {
-                console.error('WebSocket error:', error)
-                this.dispatchEvent('error', { error: 'WebSocket error' })
-            }
-
-            this.ws.onclose = () => {
-                console.log('WebSocket disconnected')
-                this.dispatchEvent('disconnect', { message: 'Disconnected from WebSocket' })
-                this.attemptReconnect()
-            }
+            this.wsCandidates = this.getCandidateUrls(token)
+            this.currentCandidateIndex = 0
+            this.openCurrentCandidate()
         } catch (error) {
             console.error('Failed to create WebSocket:', error)
+        }
+    }
+
+    private openCurrentCandidate() {
+        const wsUrl = this.wsCandidates[this.currentCandidateIndex]
+        if (!wsUrl) {
+            console.error('WebSocket: No URL candidates available')
+            return
+        }
+
+        let opened = false
+        this.ws = new WebSocket(wsUrl)
+        console.log(`WebSocket connecting to: ${wsUrl}`)
+
+        this.ws.onopen = () => {
+            opened = true
+            console.log('WebSocket connected')
+            this.reconnectAttempts = 0
+            this.dispatchEvent('connect', { message: 'Connected to WebSocket' })
+        }
+
+        this.ws.onmessage = (event) => {
+            try {
+                const message: Message = JSON.parse(event.data)
+                console.log('WebSocket message received:', message)
+                this.dispatchEvent(message.type, message.data)
+            } catch (error) {
+                console.error('Failed to parse WebSocket message:', error)
+            }
+        }
+
+        this.ws.onerror = (error) => {
+            console.error('WebSocket error:', error)
+            this.dispatchEvent('error', { error: 'WebSocket error' })
+        }
+
+        this.ws.onclose = (event) => {
+            console.log(`WebSocket disconnected (code: ${event.code}, reason: ${event.reason || 'n/a'})`)
+            this.dispatchEvent('disconnect', { message: 'Disconnected from WebSocket' })
+
+            if (!opened && this.currentCandidateIndex < this.wsCandidates.length - 1) {
+                this.currentCandidateIndex++
+                const fallbackUrl = this.wsCandidates[this.currentCandidateIndex]
+                console.warn(`WebSocket handshake failed, trying fallback URL: ${fallbackUrl}`)
+                this.openCurrentCandidate()
+                return
+            }
+
+            if (this.manualDisconnect) {
+                return
+            }
+
+            // Auth/policy closures should not loop reconnect attempts.
+            if (event.code === 1008 || event.code === 4001 || event.code === 4401) {
+                console.warn('WebSocket authentication failed; stopping reconnect attempts')
+                return
+            }
+
+            this.attemptReconnect()
+        }
+    }
+
+    private getCandidateUrls(token: string): string[] {
+        const base = this.buildAuthenticatedWsUrl(token)
+        const candidates = [base]
+
+        try {
+            const parsed = new URL(base)
+            const pathCandidates = new Set<string>([parsed.pathname])
+
+            const hostCandidates = new Set<string>()
+            hostCandidates.add(parsed.hostname)
+            if (parsed.hostname === '127.0.0.1') {
+                hostCandidates.add('localhost')
+            }
+            if (parsed.hostname === 'localhost') {
+                hostCandidates.add('127.0.0.1')
+            }
+
+            for (const host of hostCandidates) {
+                for (const path of pathCandidates) {
+                    const u = new URL(base)
+                    u.hostname = host
+                    u.pathname = path
+                    candidates.push(u.toString())
+                }
+            }
+        } catch {
+            // Keep base candidate only when URL parsing fails.
+        }
+
+        return Array.from(new Set(candidates))
+    }
+
+    private buildAuthenticatedWsUrl(token: string): string {
+        try {
+            const url = new URL(this.WS_URL)
+            url.searchParams.set('token', token)
+            return url.toString()
+        } catch {
+            const separator = this.WS_URL.includes('?') ? '&' : '?'
+            return `${this.WS_URL}${separator}token=${encodeURIComponent(token)}`
         }
     }
 
@@ -92,6 +173,8 @@ class WebSocketService {
     }
 
     disconnect() {
+        this.manualDisconnect = true
+
         if (this.reconnectTimeout) {
             clearTimeout(this.reconnectTimeout)
             this.reconnectTimeout = null

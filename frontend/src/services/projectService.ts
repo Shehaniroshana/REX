@@ -18,45 +18,49 @@ export interface ProjectMember {
 }
 
 export const projectService = {
-    async getAll(): Promise<Project[]> {
-        const response = await api.get<Project[]>('/api/projects')
+    /**
+     * Fetch all projects for the given org.
+     * orgId must be provided; it comes from the active orgStore.
+     */
+    async getAll(orgId: string): Promise<Project[]> {
+        const response = await api.get<Project[]>(`/api/orgs/${orgId}/projects`)
         return response.data
     },
 
-    async getById(id: string): Promise<Project> {
-        const response = await api.get<Project>(`/api/projects/${id}`)
+    async getById(orgId: string, id: string): Promise<Project> {
+        const response = await api.get<Project>(`/api/orgs/${orgId}/projects/${id}`)
         return response.data
     },
 
-    async create(data: CreateProjectInput): Promise<Project> {
-        const response = await api.post<Project>('/api/projects', data)
+    async create(orgId: string, data: Omit<CreateProjectInput, 'ownerId'>): Promise<Project> {
+        const response = await api.post<Project>(`/api/orgs/${orgId}/projects`, data)
         return response.data
     },
 
-    async update(id: string, data: UpdateProjectInput): Promise<Project> {
-        const response = await api.put<Project>(`/api/projects/${id}`, data)
+    async update(orgId: string, id: string, data: UpdateProjectInput): Promise<Project> {
+        const response = await api.put<Project>(`/api/orgs/${orgId}/projects/${id}`, data)
         return response.data
     },
 
-    async delete(id: string): Promise<void> {
-        await api.delete(`/api/projects/${id}`)
+    async delete(orgId: string, id: string): Promise<void> {
+        await api.delete(`/api/orgs/${orgId}/projects/${id}`)
     },
 
     // Member management
-    async getMembers(projectId: string): Promise<ProjectMember[]> {
-        const response = await api.get<ProjectMember[]>(`/api/projects/${projectId}/members`)
+    async getMembers(orgId: string, projectId: string): Promise<ProjectMember[]> {
+        const response = await api.get<ProjectMember[]>(`/api/orgs/${orgId}/projects/${projectId}/members`)
         return response.data
     },
 
-    async addMember(projectId: string, userId: string, role: string = 'member'): Promise<void> {
-        await api.post(`/api/projects/${projectId}/members`, { userId, role })
+    async addMember(orgId: string, projectId: string, userId: string, role: string = 'member'): Promise<void> {
+        await api.post(`/api/orgs/${orgId}/projects/${projectId}/members`, { userId, role })
     },
 
-    async updateMemberRole(projectId: string, userId: string, role: string): Promise<void> {
-        await api.put(`/api/projects/${projectId}/members/${userId}`, { role })
+    async updateMemberRole(orgId: string, projectId: string, userId: string, role: string): Promise<void> {
+        await api.put(`/api/orgs/${orgId}/projects/${projectId}/members/${userId}`, { role })
     },
 
-    async removeMember(projectId: string, userId: string): Promise<void> {
-        await api.delete(`/api/projects/${projectId}/members/${userId}`)
+    async removeMember(orgId: string, projectId: string, userId: string): Promise<void> {
+        await api.delete(`/api/orgs/${orgId}/projects/${projectId}/members/${userId}`)
     },
 }

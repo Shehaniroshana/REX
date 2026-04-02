@@ -1,4 +1,4 @@
-import { Trophy, LucideIcon } from 'lucide-react'
+import { Trophy } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import ProgressRing from '@/components/common/ProgressRing'
 import { cn } from '@/lib/utils'

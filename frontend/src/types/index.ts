@@ -10,6 +10,28 @@ export interface User {
     updatedAt: string
 }
 
+export interface Organization {
+    id: string
+    name: string
+    slug: string
+    description?: string
+    avatarUrl?: string
+    inviteCode?: string
+    createdBy: string
+    createdAt: string
+    updatedAt: string
+}
+
+export interface OrganizationMember {
+    id: string
+    organizationId: string
+    organization?: Organization
+    userId: string
+    user: User
+    role: 'admin' | 'member'
+    joinedAt: string
+}
+
 export interface Project {
     id: string
     key: string
@@ -116,6 +138,7 @@ export interface ActivityLog {
 export interface AuthResponse {
     token: string
     user: User
+    orgs: Organization[]
 }
 
 export interface RegisterInput {
@@ -123,6 +146,7 @@ export interface RegisterInput {
     password: string
     firstName: string
     lastName: string
+    organizationName?: string
 }
 
 export interface LoginInput {

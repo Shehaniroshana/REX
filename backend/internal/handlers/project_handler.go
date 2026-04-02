@@ -15,8 +15,13 @@ func NewProjectHandler(projectService *services.ProjectService) *ProjectHandler 
 	return &ProjectHandler{projectService: projectService}
 }
 
+// POST /api/orgs/:orgId/projects
 func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+	organizationID, err := middleware.GetOrgID(c)
 	if err != nil {
 		return err
 	}
@@ -28,14 +33,13 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validate input
 	if input.Key == "" || input.Name == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Key and name are required",
 		})
 	}
 
-	project, err := h.projectService.Create(input, userID)
+	project, err := h.projectService.Create(input, userID, organizationID)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
@@ -45,13 +49,18 @@ func (h *ProjectHandler) Create(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(project)
 }
 
+// GET /api/orgs/:orgId/projects
 func (h *ProjectHandler) GetAll(c *fiber.Ctx) error {
 	userID, err := middleware.GetUserID(c)
 	if err != nil {
 		return err
 	}
+	organizationID, err := middleware.GetOrgID(c)
+	if err != nil {
+		return err
+	}
 
-	projects, err := h.projectService.GetAll(userID)
+	projects, err := h.projectService.GetAll(userID, organizationID)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": err.Error(),
@@ -61,6 +70,7 @@ func (h *ProjectHandler) GetAll(c *fiber.Ctx) error {
 	return c.JSON(projects)
 }
 
+// GET /api/orgs/:orgId/projects/:id
 func (h *ProjectHandler) GetByID(c *fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -69,8 +79,16 @@ func (h *ProjectHandler) GetByID(c *fiber.Ctx) error {
 		})
 	}
 
-	userID := c.Locals("userId").(uuid.UUID)
-	project, err := h.projectService.GetByID(id, userID)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+	organizationID, err := middleware.GetOrgID(c)
+	if err != nil {
+		return err
+	}
+
+	project, err := h.projectService.GetByID(id, userID, organizationID)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "Project not found",
@@ -80,8 +98,13 @@ func (h *ProjectHandler) GetByID(c *fiber.Ctx) error {
 	return c.JSON(project)
 }
 
+// PUT /api/orgs/:orgId/projects/:id
 func (h *ProjectHandler) Update(c *fiber.Ctx) error {
 	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+	organizationID, err := middleware.GetOrgID(c)
 	if err != nil {
 		return err
 	}
@@ -100,7 +123,7 @@ func (h *ProjectHandler) Update(c *fiber.Ctx) error {
 		})
 	}
 
-	project, err := h.projectService.Update(id, input, userID)
+	project, err := h.projectService.Update(id, input, userID, organizationID)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
@@ -110,8 +133,13 @@ func (h *ProjectHandler) Update(c *fiber.Ctx) error {
 	return c.JSON(project)
 }
 
+// DELETE /api/orgs/:orgId/projects/:id
 func (h *ProjectHandler) Delete(c *fiber.Ctx) error {
 	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+	organizationID, err := middleware.GetOrgID(c)
 	if err != nil {
 		return err
 	}
@@ -123,7 +151,7 @@ func (h *ProjectHandler) Delete(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := h.projectService.Delete(id, userID); err != nil {
+	if err := h.projectService.Delete(id, userID, organizationID); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -132,7 +160,7 @@ func (h *ProjectHandler) Delete(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusNoContent).Send(nil)
 }
 
-// GetMembers returns all members of a project
+// GET /api/orgs/:orgId/projects/:id/members
 func (h *ProjectHandler) GetMembers(c *fiber.Ctx) error {
 	id, err := uuid.Parse(c.Params("id"))
 	if err != nil {
@@ -141,8 +169,16 @@ func (h *ProjectHandler) GetMembers(c *fiber.Ctx) error {
 		})
 	}
 
-	userID := c.Locals("userId").(uuid.UUID)
-	project, err := h.projectService.GetByID(id, userID)
+	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+	organizationID, err := middleware.GetOrgID(c)
+	if err != nil {
+		return err
+	}
+
+	project, err := h.projectService.GetByID(id, userID, organizationID)
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"error": "Project not found",
@@ -152,9 +188,13 @@ func (h *ProjectHandler) GetMembers(c *fiber.Ctx) error {
 	return c.JSON(project.Members)
 }
 
-// AddMember adds a new member to a project
+// POST /api/orgs/:orgId/projects/:id/members
 func (h *ProjectHandler) AddMember(c *fiber.Ctx) error {
 	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+	organizationID, err := middleware.GetOrgID(c)
 	if err != nil {
 		return err
 	}
@@ -188,7 +228,7 @@ func (h *ProjectHandler) AddMember(c *fiber.Ctx) error {
 		input.Role = "member"
 	}
 
-	if err := h.projectService.AddMember(projectID, memberUserID, input.Role, userID); err != nil {
+	if err := h.projectService.AddMember(projectID, memberUserID, input.Role, userID, organizationID); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -199,9 +239,13 @@ func (h *ProjectHandler) AddMember(c *fiber.Ctx) error {
 	})
 }
 
-// UpdateMemberRole updates a member's role in a project
+// PUT /api/orgs/:orgId/projects/:id/members/:userId
 func (h *ProjectHandler) UpdateMemberRole(c *fiber.Ctx) error {
 	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+	organizationID, err := middleware.GetOrgID(c)
 	if err != nil {
 		return err
 	}
@@ -230,9 +274,8 @@ func (h *ProjectHandler) UpdateMemberRole(c *fiber.Ctx) error {
 		})
 	}
 
-	// For now, we'll remove and re-add with new role (UpdateMemberRole should be added to service)
-	_ = h.projectService.RemoveMember(projectID, memberUserID, userID)
-	if err := h.projectService.AddMember(projectID, memberUserID, input.Role, userID); err != nil {
+	_ = h.projectService.RemoveMember(projectID, memberUserID, userID, organizationID)
+	if err := h.projectService.AddMember(projectID, memberUserID, input.Role, userID, organizationID); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})
@@ -243,9 +286,13 @@ func (h *ProjectHandler) UpdateMemberRole(c *fiber.Ctx) error {
 	})
 }
 
-// RemoveMember removes a member from a project
+// DELETE /api/orgs/:orgId/projects/:id/members/:userId
 func (h *ProjectHandler) RemoveMember(c *fiber.Ctx) error {
 	userID, err := middleware.GetUserID(c)
+	if err != nil {
+		return err
+	}
+	organizationID, err := middleware.GetOrgID(c)
 	if err != nil {
 		return err
 	}
@@ -264,7 +311,7 @@ func (h *ProjectHandler) RemoveMember(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := h.projectService.RemoveMember(projectID, memberUserID, userID); err != nil {
+	if err := h.projectService.RemoveMember(projectID, memberUserID, userID, organizationID); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": err.Error(),
 		})

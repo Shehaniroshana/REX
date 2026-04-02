@@ -5,7 +5,10 @@ import (
 	"log"
 	"time"
 
+	"rex-backend/internal/middleware"
+
 	"github.com/gofiber/websocket/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 )
 
@@ -16,9 +19,20 @@ const (
 	maxMessageSize = 512
 )
 
-func HandleConnection(hub *Hub, conn *websocket.Conn, token string) {
+func HandleConnection(hub *Hub, conn *websocket.Conn, token, jwtSecret string) {
+	var userID uuid.UUID
+	parsedToken, err := jwt.ParseWithClaims(token, &middleware.Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(jwtSecret), nil
+	})
+	if err == nil && parsedToken.Valid {
+		if claims, ok := parsedToken.Claims.(*middleware.Claims); ok {
+			userID = claims.UserID
+		}
+	}
+
 	client := &Client{
 		ID:       uuid.New(),
+		UserID:   userID,
 		Hub:      hub,
 		Send:     make(chan []byte, 256),
 		Projects: make(map[uuid.UUID]bool),

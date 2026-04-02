@@ -72,6 +72,8 @@ func Migrate(db *gorm.DB) error {
 	})
 
 	err := tx.AutoMigrate(
+		&models.Organization{},
+		&models.OrganizationMember{},
 		&models.User{},
 		&models.Project{},
 		&models.ProjectMember{},
@@ -94,3 +96,5 @@ func Migrate(db *gorm.DB) error {
 	log.Println("✅ Database migrations completed successfully")
 	return nil
 }
+
+

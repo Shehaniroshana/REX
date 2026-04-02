@@ -4,20 +4,22 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/google/uuid"
 	"rex-backend/internal/models"
 	"rex-backend/internal/repository"
-	"github.com/google/uuid"
 )
 
 type ProjectService struct {
 	projectRepo  *repository.ProjectRepository
 	activityRepo *repository.ActivityRepository
+	orgRepo      *repository.OrganizationRepository
 }
 
-func NewProjectService(projectRepo *repository.ProjectRepository, activityRepo *repository.ActivityRepository) *ProjectService {
+func NewProjectService(projectRepo *repository.ProjectRepository, activityRepo *repository.ActivityRepository, orgRepo *repository.OrganizationRepository) *ProjectService {
 	return &ProjectService{
 		projectRepo:  projectRepo,
 		activityRepo: activityRepo,
+		orgRepo:      orgRepo,
 	}
 }
 
@@ -36,20 +38,21 @@ type UpdateProjectInput struct {
 	Color       string `json:"color"`
 }
 
-func (s *ProjectService) Create(input CreateProjectInput, ownerID uuid.UUID) (*models.Project, error) {
+func (s *ProjectService) Create(input CreateProjectInput, ownerID, organizationID uuid.UUID) (*models.Project, error) {
 	// Check if project key already exists
-	existingProject, err := s.projectRepo.FindByKey(input.Key)
+	existingProject, err := s.projectRepo.FindByKeyInOrganization(input.Key, organizationID)
 	if err == nil && existingProject != nil {
 		return nil, errors.New("project with this key already exists")
 	}
 
 	project := &models.Project{
-		Key:         input.Key,
-		Name:        input.Name,
-		Description: input.Description,
-		Icon:        input.Icon,
-		Color:       input.Color,
-		OwnerID:     ownerID,
+		OrganizationID: organizationID,
+		Key:            input.Key,
+		Name:           input.Name,
+		Description:    input.Description,
+		Icon:           input.Icon,
+		Color:          input.Color,
+		OwnerID:        ownerID,
 	}
 
 	if err := s.projectRepo.Create(project); err != nil {
@@ -70,23 +73,26 @@ func (s *ProjectService) Create(input CreateProjectInput, ownerID uuid.UUID) (*m
 	return project, nil
 }
 
-func (s *ProjectService) GetAll(userID uuid.UUID) ([]models.Project, error) {
-	return s.projectRepo.GetAll(userID)
+func (s *ProjectService) GetAll(userID, organizationID uuid.UUID) ([]models.Project, error) {
+	return s.projectRepo.GetAllByOrganization(userID, organizationID)
 }
 
-func (s *ProjectService) GetByID(id, userID uuid.UUID) (*models.Project, error) {
-	isMember, err := s.projectRepo.IsMember(id, userID)
+func (s *ProjectService) GetByID(id, userID, organizationID uuid.UUID) (*models.Project, error) {
+	// Check if user is in the organization (Though middleware should catch this, it's a safe double-check)
+	isInOrg, err := s.orgRepo.IsUserMember(organizationID, userID)
 	if err != nil {
 		return nil, err
 	}
-	if !isMember {
-		return nil, errors.New("access denied: you are not a member of this project")
+	if !isInOrg {
+		return nil, errors.New("access denied: you are not a member of this organization")
 	}
-	return s.projectRepo.FindByID(id)
+
+	// All organization members can view all organization projects
+	return s.projectRepo.FindByIDAndOrganization(id, organizationID)
 }
 
-func (s *ProjectService) Update(id uuid.UUID, input UpdateProjectInput, userID uuid.UUID) (*models.Project, error) {
-	project, err := s.projectRepo.FindByID(id)
+func (s *ProjectService) Update(id uuid.UUID, input UpdateProjectInput, userID, organizationID uuid.UUID) (*models.Project, error) {
+	project, err := s.projectRepo.FindByIDAndOrganization(id, organizationID)
 	if err != nil {
 		return nil, err
 	}
@@ -126,8 +132,8 @@ func (s *ProjectService) Update(id uuid.UUID, input UpdateProjectInput, userID u
 	return project, nil
 }
 
-func (s *ProjectService) Delete(id uuid.UUID, userID uuid.UUID) error {
-	project, err := s.projectRepo.FindByID(id)
+func (s *ProjectService) Delete(id uuid.UUID, userID, organizationID uuid.UUID) error {
+	project, err := s.projectRepo.FindByIDAndOrganization(id, organizationID)
 	if err != nil {
 		return err
 	}
@@ -142,8 +148,8 @@ func (s *ProjectService) Delete(id uuid.UUID, userID uuid.UUID) error {
 	return s.projectRepo.Delete(id)
 }
 
-func (s *ProjectService) AddMember(projectID, userID uuid.UUID, role string, addedBy uuid.UUID) error {
-	project, err := s.projectRepo.FindByID(projectID)
+func (s *ProjectService) AddMember(projectID, userID uuid.UUID, role string, addedBy, organizationID uuid.UUID) error {
+	project, err := s.projectRepo.FindByIDAndOrganization(projectID, organizationID)
 	if err != nil {
 		return err
 	}
@@ -151,6 +157,15 @@ func (s *ProjectService) AddMember(projectID, userID uuid.UUID, role string, add
 	// Only owner can add members
 	if project.OwnerID != addedBy {
 		return errors.New("only project owner can add members")
+	}
+
+	// Verify the user being added is in the same organization
+	isInOrg, err := s.orgRepo.IsUserMember(organizationID, userID)
+	if err != nil {
+		return err
+	}
+	if !isInOrg {
+		return errors.New("cannot add user: user is not a member of this organization")
 	}
 
 	member := &models.ProjectMember{
@@ -173,8 +188,8 @@ func (s *ProjectService) AddMember(projectID, userID uuid.UUID, role string, add
 	return nil
 }
 
-func (s *ProjectService) RemoveMember(projectID, userID, removedBy uuid.UUID) error {
-	project, err := s.projectRepo.FindByID(projectID)
+func (s *ProjectService) RemoveMember(projectID, userID, removedBy, organizationID uuid.UUID) error {
+	project, err := s.projectRepo.FindByIDAndOrganization(projectID, organizationID)
 	if err != nil {
 		return err
 	}

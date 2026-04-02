@@ -3,11 +3,12 @@ import { useNavigate } from 'react-router-dom'
 import { useProjectStore } from '@/store/projectStore'
 import { useIssueStore } from '@/store/issueStore'
 import { useAuthStore } from '@/store/authStore'
+import { useOrgStore } from '@/store/orgStore'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Plus, FolderKanban, Clock, Users,
-  Target, Sparkles, Calendar
+  Target, Sparkles, Calendar, Building2
 } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import type { CreateProjectInput, Issue } from '@/types'
@@ -22,6 +23,7 @@ import QuickstartGuide from '@/components/QuickstartGuide'
 
 export default function DashboardPage() {
   const { projects, fetchProjects, createProject, isLoading } = useProjectStore()
+  const { currentOrgId } = useOrgStore()
   const { issues, fetchIssues } = useIssueStore()
   const { user } = useAuthStore()
   const navigate = useNavigate()
@@ -169,14 +171,25 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <Button
-            onClick={() => setShowCreateModal(true)}
-            className="btn-neon h-14 px-8 text-base font-bold shadow-2xl shadow-cyan-500/30 border border-white/20 w-full md:w-auto mt-4 md:mt-0"
-            size="lg"
-          >
-            <Sparkles className="w-5 h-5 mr-3 animate-pulse" />
-            New Project
-          </Button>
+          {currentOrgId ? (
+            <Button
+              onClick={() => setShowCreateModal(true)}
+              className="btn-neon h-14 px-8 text-base font-bold shadow-2xl shadow-cyan-500/30 border border-white/20 w-full md:w-auto mt-4 md:mt-0"
+              size="lg"
+            >
+              <Sparkles className="w-5 h-5 mr-3 animate-pulse" />
+              New Project
+            </Button>
+          ) : (
+            <Button
+              onClick={() => navigate('/orgs')}
+              className="btn-neon h-14 px-8 text-base font-bold shadow-2xl shadow-cyan-500/30 border border-white/20 w-full md:w-auto mt-4 md:mt-0"
+              size="lg"
+            >
+              <Building2 className="w-5 h-5 mr-3" />
+              Create Organization
+            </Button>
+          )}
         </div>
       </div>
 
@@ -209,10 +222,12 @@ export default function DashboardPage() {
             </div>
             Your Workspace
           </h2>
-          <Button onClick={() => setShowCreateModal(true)} className="btn-glass px-4 h-10 text-sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Project
-          </Button>
+          {currentOrgId && (
+            <Button onClick={() => setShowCreateModal(true)} className="btn-glass px-4 h-10 text-sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Project
+            </Button>
+          )}
         </div>
 
         {isLoading ? (
@@ -220,6 +235,24 @@ export default function DashboardPage() {
             {[...Array(3)].map((_, i) => (
               <div key={i} className="shimmer h-48 rounded-2xl" />
             ))}
+          </div>
+        ) : !currentOrgId ? (
+          <div className="glass-card rounded-2xl border-2 border-dashed border-cyan-500/50 p-8 bg-cyan-500/5">
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 rounded-full bg-cyan-500/20 flex items-center justify-center mb-4 animate-float">
+                <Building2 className="w-8 h-8 text-cyan-400" />
+              </div>
+              <h3 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
+                Join or Create an Organization
+              </h3>
+              <p className="text-slate-300 mb-6 text-center max-w-md text-base leading-relaxed">
+                Before you can create projects, you need to belong to an organization. Organizations group your team's projects together.
+              </p>
+              <Button onClick={() => navigate('/orgs')} className="btn-neon px-8 h-12 text-base font-bold shadow-2xl shadow-cyan-500/30">
+                <Building2 className="w-5 h-5 mr-3" />
+                Go to Organizations
+              </Button>
+            </div>
           </div>
         ) : projects.length === 0 ? (
           <div className="glass-card rounded-2xl border-2 border-dashed border-slate-700/50 p-8">

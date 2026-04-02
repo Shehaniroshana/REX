@@ -30,7 +30,9 @@ func (u *User) BeforeCreate(tx *gorm.DB) error {
 
 type Project struct {
 	ID              uuid.UUID       `gorm:"type:uuid;primaryKey" json:"id"`
-	Key             string          `gorm:"uniqueIndex;not null" json:"key"` // e.g., "PROJ"
+	OrganizationID  uuid.UUID       `gorm:"type:uuid;index;uniqueIndex:idx_projects_org_key" json:"organizationId"`
+	Organization    Organization    `gorm:"foreignKey:OrganizationID" json:"organization,omitempty"`
+	Key             string          `gorm:"not null;uniqueIndex:idx_projects_org_key" json:"key"` // e.g., "PROJ"
 	Name            string          `gorm:"not null" json:"name"`
 	Description     string          `json:"description"`
 	Icon            string          `json:"icon"`
@@ -271,6 +273,46 @@ type IssueLink struct {
 func (il *IssueLink) BeforeCreate(tx *gorm.DB) error {
 	if il.ID == uuid.Nil {
 		il.ID = uuid.New()
+	}
+	return nil
+}
+
+type Organization struct {
+	ID          uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
+	Name        string         `gorm:"not null;uniqueIndex" json:"name"`
+	Slug        string         `gorm:"uniqueIndex" json:"slug"`
+	Description string         `json:"description"`
+	AvatarURL   string         `json:"avatarUrl"`
+	InviteCode  string         `gorm:"uniqueIndex" json:"inviteCode"`
+	CreatedBy   uuid.UUID      `gorm:"type:uuid;not null" json:"createdBy"`
+	Projects  []Project      `gorm:"foreignKey:OrganizationID" json:"projects,omitempty"`
+	CreatedAt time.Time      `json:"createdAt"`
+	UpdatedAt time.Time      `json:"updatedAt"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (o *Organization) BeforeCreate(tx *gorm.DB) error {
+	if o.ID == uuid.Nil {
+		o.ID = uuid.New()
+	}
+	return nil
+}
+
+type OrganizationMember struct {
+	ID             uuid.UUID      `gorm:"type:uuid;primaryKey" json:"id"`
+	OrganizationID uuid.UUID      `gorm:"type:uuid;not null;index" json:"organizationId"`
+	UserID         uuid.UUID      `gorm:"type:uuid;not null;index" json:"userId"`
+	User           User           `gorm:"foreignKey:UserID" json:"user,omitempty"`
+	Role           string         `gorm:"not null;default:'member'" json:"role"` // admin, member
+	JoinedAt       time.Time      `gorm:"default:CURRENT_TIMESTAMP" json:"joinedAt"`
+	CreatedAt      time.Time      `json:"createdAt"`
+	UpdatedAt      time.Time      `json:"updatedAt"`
+	DeletedAt      gorm.DeletedAt `gorm:"index" json:"-"`
+}
+
+func (om *OrganizationMember) BeforeCreate(tx *gorm.DB) error {
+	if om.ID == uuid.Nil {
+		om.ID = uuid.New()
 	}
 	return nil
 }
